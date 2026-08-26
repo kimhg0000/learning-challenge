@@ -1,0 +1,16 @@
+{
+  "name": "15주 학습 퀘스트",
+  "short_name": "15주 퀘스트",
+  "description": "주 1회, 15주 동안 행동 목표를 실천하고 인증하는 모바일 학습 퀘스트",
+  "lang": "ko-KR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#070911",
+  "theme_color": "#08090f",
+  "icons": [
+    {"src":"/icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"/icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}
