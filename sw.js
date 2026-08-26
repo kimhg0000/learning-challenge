@@ -1,4 +1,4 @@
-const CACHE_VERSION = '15week-quest-pwa-v2-goal-history';
+const CACHE_VERSION = '15week-challenge-pwa-v3-growth-badges';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
