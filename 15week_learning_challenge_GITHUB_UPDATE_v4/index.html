@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#08090f" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="15주 챌린지" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>15주 학습 챌린지</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&family=Orbitron:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#070911;
+      --panel:#101522;
+      --panel2:#141b2b;
+      --line:rgba(255,255,255,.09);
+      --text:#f4f7ff;
+      --muted:#8f9bb3;
+      --blue:#00e7ff;
+      --purple:#9b5cff;
+      --pink:#ff3b9d;
+      --green:#53f58b;
+      --yellow:#ffd54d;
+      --danger:#ff6077;
+      --shadow:0 12px 36px rgba(0,0,0,.36);
+      --radius:18px;
+      --safe-bottom:env(safe-area-inset-bottom, 0px);
+      --font:'Noto Sans KR',sans-serif;
+      --cyber:'Orbitron',sans-serif;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    html,body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100%;overscroll-behavior:none}
+    body{
+      background-image:radial-gradient(circle at 0 0,rgba(155,92,255,.14),transparent 38%),radial-gradient(circle at 100% 18%,rgba(0,231,255,.12),transparent 38%);
+      display:flex;justify-content:center;
+    }
+    button,input,textarea,select{font:inherit}
+    button{cursor:pointer}
+    .app-shell{width:100%;max-width:520px;min-height:100dvh;position:relative;background:rgba(7,9,17,.92);overflow-x:hidden}
+    .hidden{display:none!important}
+    .screen{min-height:100dvh}
+    .scroll-screen{padding:18px 16px calc(92px + var(--safe-bottom));}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+    .brand-mini{font-family:var(--cyber);font-size:14px;letter-spacing:.08em;color:var(--blue)}
+    .icon-btn{width:40px;height:40px;border:1px solid var(--line);background:rgba(255,255,255,.035);border-radius:13px;color:var(--text);display:grid;place-items:center;font-size:18px}
+    .eyebrow{color:var(--blue);font-family:var(--cyber);font-size:11px;letter-spacing:.08em;margin-bottom:7px}
+    h1,h2,h3{line-height:1.25}
+    h1{font-size:28px;font-weight:900}
+    h2{font-size:21px;font-weight:800}
+    h3{font-size:16px;font-weight:800}
+    .muted{color:var(--muted)}
+    .small{font-size:12px}
+    .body-sm{font-size:14px;line-height:1.65}
+    .panel{background:linear-gradient(155deg,rgba(20,27,43,.97),rgba(13,17,29,.97));border:1px solid var(--line);border-radius:var(--radius);padding:17px;box-shadow:var(--shadow)}
+    .panel+.panel{margin-top:12px}
+    .glow-panel{border-color:rgba(0,231,255,.24);box-shadow:0 12px 36px rgba(0,0,0,.34),0 0 24px rgba(0,231,255,.055)}
+    .btn{border:none;border-radius:14px;padding:14px 16px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px}
+    .btn-primary{background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;box-shadow:0 7px 22px rgba(0,231,255,.16)}
+    .btn-secondary{background:rgba(255,255,255,.055);color:var(--text);border:1px solid var(--line)}
+    .btn-danger{background:rgba(255,96,119,.1);color:#ff8da0;border:1px solid rgba(255,96,119,.22)}
+    .btn:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
+    .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .field{margin-top:15px}
+    .field label{display:block;font-size:13px;font-weight:700;margin-bottom:8px;color:#dfe7fa}
+    .input,.select,.textarea{width:100%;border-radius:13px;border:1px solid var(--line);background:rgba(0,0,0,.25);color:#fff;padding:13px 14px;outline:none}
+    .input:focus,.select:focus,.textarea:focus{border-color:rgba(0,231,255,.65);box-shadow:0 0 0 3px rgba(0,231,255,.07)}
+    .textarea{resize:none;min-height:112px;line-height:1.65}
+    .helper{font-size:12px;color:var(--muted);line-height:1.55;margin-top:7px}
+    .error{font-size:12px;color:#ff8ba0;margin-top:8px}
+    .chip-row{display:flex;gap:7px;flex-wrap:wrap}
+    .chip{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--muted);font-size:12px;padding:8px 10px;border-radius:999px;font-weight:700}
+    .chip.active{color:#071016;background:var(--blue);border-color:var(--blue)}
+    .tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;padding:5px 8px;border-radius:999px;background:rgba(255,255,255,.055);color:var(--muted)}
+    .tag.green{background:rgba(83,245,139,.12);color:var(--green)}
+    .tag.pink{background:rgba(255,59,157,.12);color:#ff78b8}
+    .tag.yellow{background:rgba(255,213,77,.12);color:var(--yellow)}
+    .tag.blue{background:rgba(0,231,255,.11);color:var(--blue)}
+
+    /* Auth */
+    #auth-screen{padding:24px 18px 32px;display:flex;flex-direction:column;justify-content:center;min-height:100dvh}
+    .logo-mark{width:68px;height:68px;border-radius:22px;background:linear-gradient(135deg,var(--blue),var(--purple));display:grid;place-items:center;font-size:33px;box-shadow:0 0 32px rgba(0,231,255,.18);margin-bottom:20px}
+    .auth-title{font-family:var(--cyber);font-size:25px;line-height:1.25;margin-bottom:10px}
+    .auth-sub{color:var(--muted);font-size:14px;line-height:1.65;margin-bottom:26px}
+    .google-btn{background:#fff;color:#111}
+    .divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:11px;margin:17px 0}.divider:before,.divider:after{content:"";height:1px;background:var(--line);flex:1}
+    .auth-switch{margin-top:16px;text-align:center;font-size:12px;color:var(--muted)}
+    .auth-switch button{border:0;background:none;color:var(--blue);font-weight:800}
+    .setup-warning{margin-top:18px;border:1px solid rgba(255,213,77,.26);background:rgba(255,213,77,.07);padding:12px;border-radius:12px;color:#ffdf73;font-size:11px;line-height:1.55}
+    .prototype-entry{margin:4px 0 18px;padding:15px;border:1px solid rgba(255,213,77,.35);background:linear-gradient(145deg,rgba(255,213,77,.10),rgba(155,92,255,.08));border-radius:17px;box-shadow:0 10px 30px rgba(0,0,0,.22)}
+    .prototype-entry-badge{display:inline-flex;font-family:var(--cyber);font-size:9px;letter-spacing:.08em;color:#151008;background:var(--yellow);border-radius:999px;padding:5px 8px;font-weight:900}
+    .prototype-entry-title{font-size:17px;font-weight:900;margin-top:9px}.prototype-entry p{font-size:11px;line-height:1.6;color:#c8d0df;margin-top:5px}
+
+    /* onboarding */
+    #onboarding-screen{padding:20px 16px 40px}
+    .step-dots{display:flex;gap:7px;margin:18px 0}.step-dot{height:5px;flex:1;border-radius:99px;background:rgba(255,255,255,.09)}.step-dot.active{background:linear-gradient(90deg,var(--blue),var(--purple))}
+    .guide-card{margin-top:14px;padding:14px;border-radius:14px;background:rgba(0,231,255,.055);border:1px solid rgba(0,231,255,.14)}
+    .guide-formula{font-weight:900;color:var(--blue);font-size:14px;margin:7px 0 4px}
+    .example-list{display:grid;gap:8px;margin-top:10px}.example-item{padding:10px 11px;border-radius:11px;background:rgba(255,255,255,.035);font-size:12px;color:#d5dded;line-height:1.55}
+    .weekday-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.weekday-btn{aspect-ratio:1;border-radius:11px;border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--muted);font-weight:800;font-size:12px}.weekday-btn.active{color:#071016;background:var(--blue);border-color:var(--blue)}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .character-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:9px}.character-choice{border:1px solid var(--line);background:rgba(255,255,255,.028);border-radius:15px;padding:12px 8px;color:var(--text);text-align:center;transition:.18s ease}.character-choice.active{border-color:var(--blue);background:rgba(0,231,255,.07);box-shadow:0 0 0 2px rgba(0,231,255,.06)}.character-choice .character-choice-name{font-size:12px;font-weight:900;margin-top:7px}.character-choice .character-choice-desc{font-size:9px;color:var(--muted);margin-top:3px}.character-orb{position:relative;display:inline-grid;place-items:center;border-radius:32%;background:linear-gradient(145deg,rgba(0,231,255,.13),rgba(155,92,255,.16));border:1px solid rgba(255,255,255,.12);box-shadow:inset 0 0 24px rgba(255,255,255,.025),0 10px 28px rgba(0,0,0,.24);overflow:visible}.character-orb.medium{width:74px;height:74px}.character-orb.large{width:96px;height:96px}.character-orb.small{width:40px;height:40px;border-radius:13px}.character-orb .animal{font-size:44px;line-height:1;filter:drop-shadow(0 4px 7px rgba(0,0,0,.28));transition:.2s ease}.character-orb.large .animal{font-size:57px}.character-orb.small .animal{font-size:25px}.character-orb .evo-mark{position:absolute;right:-5px;bottom:-5px;width:29px;height:29px;border-radius:50%;background:#151b28;border:2px solid #0a0e17;display:grid;place-items:center;font-size:15px;box-shadow:0 4px 10px rgba(0,0,0,.35)}.character-orb.small .evo-mark{width:18px;height:18px;font-size:10px;right:-4px;bottom:-4px;border-width:1px}.character-orb.stage-2{box-shadow:0 0 18px rgba(83,245,139,.09),inset 0 0 20px rgba(83,245,139,.035)}.character-orb.stage-3{border-color:rgba(0,231,255,.28);box-shadow:0 0 20px rgba(0,231,255,.11)}.character-orb.stage-4{border-color:rgba(155,92,255,.36);box-shadow:0 0 22px rgba(155,92,255,.15)}.character-orb.stage-5{border-color:rgba(255,213,77,.46);background:linear-gradient(145deg,rgba(255,213,77,.12),rgba(155,92,255,.18));box-shadow:0 0 26px rgba(255,213,77,.16)}
+
+    /* app home */
+    .welcome{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+    .welcome-name{font-size:23px;font-weight:900}.welcome-name span{color:var(--blue)}
+    .avatar{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,rgba(0,231,255,.18),rgba(155,92,255,.22));border:1px solid rgba(0,231,255,.18);display:grid;place-items:center;font-weight:900;color:var(--blue)}
+    .growth-panel{display:grid;grid-template-columns:100px 1fr;gap:14px;align-items:center;margin-bottom:13px;padding:15px}.growth-main{min-width:0}.growth-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.growth-level{font-family:var(--cyber);font-weight:900;font-size:16px;color:var(--blue)}.growth-stage{font-size:12px;font-weight:800;margin-top:3px}.growth-xp-meta{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--muted);margin:10px 0 6px}.growth-note{font-size:10px;color:var(--muted);line-height:1.45;margin-top:7px}.badge-pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:900;color:#271d00;background:var(--yellow)}
+    .hero-card{position:relative;overflow:hidden}.hero-card:after{content:"";position:absolute;width:150px;height:150px;border-radius:50%;right:-72px;top:-80px;background:radial-gradient(circle,rgba(0,231,255,.23),transparent 68%)}
+    .week-big{font-family:var(--cyber);font-size:28px;color:var(--blue);font-weight:900;margin-top:5px}
+    .quest-text{font-size:17px;font-weight:800;line-height:1.55;margin:12px 0 14px;word-break:keep-all}
+    .schedule-line{display:flex;align-items:center;gap:7px;font-size:12px;color:#c5cee1;margin-top:7px}
+    .progress-wrap{margin-top:14px}.progress-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:7px}.progress-track{height:8px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden}.progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--purple));border-radius:99px}
+    .home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.metric{padding:14px;border:1px solid var(--line);border-radius:15px;background:rgba(255,255,255,.025)}.metric b{display:block;font-family:var(--cyber);font-size:20px;margin-top:5px}.metric span{font-size:11px;color:var(--muted)}
+    .section-head{display:flex;justify-content:space-between;align-items:center;margin:22px 2px 11px}.section-head h3{font-size:16px}.text-btn{border:0;background:none;color:var(--blue);font-size:12px;font-weight:800}
+    .mini-feed{display:grid;gap:9px}.mini-feed-item{display:grid;grid-template-columns:56px 1fr;gap:11px;padding:10px;background:rgba(255,255,255,.025);border:1px solid var(--line);border-radius:14px}.mini-feed-item img{width:56px;height:56px;object-fit:cover;border-radius:11px;background:#151924}.mini-feed-item strong{font-size:12px}.mini-feed-item p{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+    /* weeks */
+    .week-list{display:grid;gap:10px}.week-card{border:1px solid var(--line);background:rgba(255,255,255,.027);border-radius:15px;padding:14px;display:grid;grid-template-columns:54px 1fr auto;align-items:center;gap:11px}.week-card.current{border-color:rgba(255,59,157,.46);box-shadow:0 0 18px rgba(255,59,157,.08)}.week-no{width:54px;height:54px;border-radius:15px;background:rgba(255,255,255,.045);display:grid;place-items:center;font-family:var(--cyber);font-size:12px;font-weight:900;color:var(--muted)}.week-card.done .week-no{background:rgba(83,245,139,.1);color:var(--green)}.week-card.current .week-no{background:rgba(255,59,157,.12);color:#ff7dbb}.week-info strong{display:block;font-size:13px}.week-info span{display:block;color:var(--muted);font-size:11px;margin-top:4px}.week-status{font-size:11px;font-weight:800;text-align:right}
+    .prototype-banner{border:1px solid rgba(255,251,0,.22);background:rgba(255,251,0,.06);border-radius:15px;padding:12px 13px;margin:0 0 13px;color:#fff}.prototype-banner strong{display:block;font-size:12px;color:var(--yellow);margin-bottom:4px}.prototype-banner p{font-size:11px;line-height:1.55;color:var(--muted)}.prototype-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:10px;align-items:end}.prototype-row .field{margin:0}.prototype-chip{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:900;color:var(--yellow);border:1px solid rgba(255,251,0,.25);background:rgba(255,251,0,.07);border-radius:999px;padding:5px 8px}.demo-role-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+
+    /* feed */
+    .feed-filter-wrap{margin-bottom:12px;overflow:hidden}.feed-week-filter{display:flex;gap:7px;overflow-x:auto;padding:2px 0 7px;scrollbar-width:none}.feed-week-filter::-webkit-scrollbar{display:none}.feed-week-chip{flex:0 0 auto;border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--muted);font-size:11px;font-weight:800;padding:8px 11px;border-radius:999px}.feed-week-chip.active{background:var(--blue);border-color:var(--blue);color:#061116}.feed-list{display:grid;gap:12px}.feed-card{border-radius:16px;overflow:hidden;background:rgba(255,255,255,.03);border:1px solid var(--line)}.feed-img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#111827}.feed-body{padding:13px}.feed-top{display:flex;justify-content:space-between;align-items:center;gap:8px}.anon{font-size:13px;font-weight:900}.feed-reflection{font-size:13px;line-height:1.65;color:#d8dfed;margin-top:10px;white-space:pre-wrap}.feed-date{font-size:10px;color:var(--muted);margin-top:9px}
+
+    /* profile */
+    .profile-head{text-align:center;padding:9px 0 8px}.profile-avatar{width:82px;height:82px;margin:0 auto 12px;display:grid;place-items:center}.profile-name{font-size:21px;font-weight:900}.profile-id{color:var(--muted);font-size:12px;margin-top:4px}.profile-row{display:flex;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid var(--line);font-size:13px}.profile-row:last-child{border:0}.profile-row span:first-child{color:var(--muted)}.profile-row span:last-child{text-align:right;font-weight:700}
+    .history-note{margin-top:12px;padding:11px 12px;border-radius:12px;border:1px solid rgba(255,213,77,.22);background:rgba(255,213,77,.06);color:#f7df8d;font-size:11px;line-height:1.6}
+    .history-list{display:grid;gap:10px}.history-item{padding:13px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.028)}.history-item.current{border-color:rgba(0,231,255,.28);background:rgba(0,231,255,.045)}.history-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.history-version{font-family:var(--cyber);font-size:11px;color:var(--blue);font-weight:900}.history-date{font-size:10px;color:var(--muted)}.history-goal{font-size:13px;font-weight:800;line-height:1.6}.history-schedule{font-size:11px;color:#b9c4d8;margin-top:7px}.history-badge{display:inline-flex;margin-left:6px;font-family:var(--font);font-size:9px;color:#071016;background:var(--blue);border-radius:999px;padding:3px 6px;vertical-align:1px}
+
+    /* instructor */
+    .admin-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:12px 0}.admin-metric{padding:12px 8px;border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.03);text-align:center}.admin-metric b{display:block;font-family:var(--cyber);font-size:18px}.admin-metric span{font-size:10px;color:var(--muted)}
+    .student-table{display:grid;gap:8px}.student-identity{display:flex;align-items:center;gap:9px}.student-progress{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px}.student-badge-stat{font-size:10px;font-weight:900;color:var(--yellow)}.student-row{padding:13px;border:1px solid var(--line);background:rgba(255,255,255,.025);border-radius:14px}.student-row-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.student-name{font-size:13px;font-weight:900}.student-name-btn{border:0;background:none;color:#fff;padding:0;text-align:left;font:inherit;font-size:13px;font-weight:900;text-decoration:underline;text-decoration-color:rgba(0,231,255,.45);text-underline-offset:3px;cursor:pointer}.student-name-btn:active{color:var(--blue)}.student-id{font-size:10px;color:var(--muted);margin-top:3px}.student-sub-detail{display:grid;grid-template-columns:64px 1fr;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}.student-sub-detail img{width:64px;height:64px;object-fit:cover;border-radius:10px}.student-sub-detail p{font-size:11px;color:#cfd7e7;line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.admin-goal-box{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}.admin-goal-text{font-size:11px;font-weight:800;line-height:1.55;margin-top:4px}.goal-history-details{margin-top:8px}.goal-history-details summary{font-size:10px;color:var(--blue);font-weight:800;cursor:pointer;list-style:none}.goal-history-details summary::-webkit-details-marker{display:none}.admin-history-list{display:grid;gap:6px;margin-top:8px}.admin-history-item{padding:8px 9px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.025);font-size:10px;line-height:1.5;color:#cfd7e7}.admin-history-item b{color:#fff}.admin-action-row{display:flex;align-items:center;gap:12px}.admin-export-note{font-size:10px;color:var(--muted);line-height:1.5;margin-top:8px}.student-history-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px}.student-history-stat{padding:10px 7px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03);text-align:center}.student-history-stat b{display:block;font-family:var(--cyber);font-size:16px}.student-history-stat span{font-size:9px;color:var(--muted)}.student-history-feed{display:grid;gap:12px}.student-history-goal{font-size:11px;line-height:1.55;color:#bfc9dc;margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
+
+    /* bottom nav */
+    .bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:100%;max-width:520px;display:grid;grid-template-columns:repeat(4,1fr);background:rgba(9,12,20,.94);backdrop-filter:blur(18px);border-top:1px solid var(--line);padding:8px 8px calc(8px + var(--safe-bottom));z-index:20}.bottom-nav.admin-mode{grid-template-columns:repeat(5,1fr)}.nav-btn{border:0;background:none;color:#718099;padding:6px 3px;display:grid;place-items:center;gap:2px;font-size:9px;font-weight:700}.nav-btn .nav-ico{font-size:18px;line-height:1.1}.nav-btn.active{color:var(--blue)}
+
+    /* modal / camera */
+    .modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.76);backdrop-filter:blur(8px);display:flex;align-items:flex-end;justify-content:center}.modal-card{width:100%;max-width:520px;max-height:92dvh;overflow:auto;background:#0f1421;border:1px solid var(--line);border-radius:24px 24px 0 0;padding:18px 16px calc(20px + var(--safe-bottom));box-shadow:0 -18px 60px rgba(0,0,0,.5)}.modal-handle{width:40px;height:4px;border-radius:99px;background:rgba(255,255,255,.2);margin:0 auto 16px}.modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}.close-btn{border:0;background:rgba(255,255,255,.06);color:#fff;width:34px;height:34px;border-radius:11px}
+    .camera-box{position:relative;border-radius:16px;overflow:hidden;background:#05070c;aspect-ratio:3/4;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}.camera-box video,.camera-box img{width:100%;height:100%;object-fit:cover;display:block}.camera-placeholder{padding:24px;text-align:center;color:var(--muted);font-size:13px;line-height:1.65}.camera-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px}
+    .detail-photo{width:100%;border-radius:16px;display:block;margin:12px 0;max-height:62dvh;object-fit:contain;background:#05070c}
+    .detail-reflection{white-space:pre-wrap;font-size:13px;line-height:1.7;color:#dfe5f1;background:rgba(255,255,255,.03);padding:13px;border-radius:13px;border:1px solid var(--line)}
+
+    /* toast */
+    .toast-wrap{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(82px + var(--safe-bottom));z-index:100;width:calc(100% - 32px);max-width:488px;pointer-events:none}.toast{background:rgba(16,21,34,.97);border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:13px;padding:12px 13px;box-shadow:var(--shadow);font-size:12px;line-height:1.5;animation:toastIn .2s ease}.toast.success{border-left-color:var(--green)}.toast.error{border-left-color:var(--danger)}@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+    @media(min-width:680px){
+      body{padding:22px 0;background-color:#05060a}
+      .app-shell{min-height:calc(100dvh - 44px);border:1px solid rgba(255,255,255,.08);border-radius:28px;overflow:hidden;box-shadow:0 20px 80px rgba(0,0,0,.5)}
+      .bottom-nav{bottom:22px;border-radius:0 0 28px 28px}
+      .modal{align-items:center}.modal-card{border-radius:24px;max-height:88dvh}
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell" id="app-shell">
+  <!-- LOGIN -->
+  <section id="auth-screen" class="screen">
+    <div class="logo-mark">⚡</div>
+    <div class="eyebrow">15-week learning challenge</div>
+    <div class="auth-title">한 번 정한 행동을<br>15주 동안 반복하세요.</div>
+    <p class="auth-sub">매주 같은 요일과 시간에 실천하고, 인증샷과 성찰을 남기는 모바일 학습 챌린지입니다.</p>
+
+    <div id="prototype-entry" class="prototype-entry">
+      <div class="prototype-entry-badge">PROTOTYPE TEST</div>
+      <div class="prototype-entry-title">지금 바로 체험하기</div>
+      <p>9월 시작 전에도 모든 기능을 확인할 수 있습니다. 실제 계정 없이 학생/교수자 화면으로 바로 들어갑니다.</p>
+      <div id="demo-role-row" class="demo-role-row">
+        <button id="demo-login-btn" class="btn btn-primary" type="button" onclick="window.startStudentDemo && window.startStudentDemo()">학생 화면 체험</button>
+        <button id="demo-instructor-btn" class="btn btn-secondary" type="button" onclick="window.startInstructorDemo && window.startInstructorDemo()">교수자 화면 체험</button>
+      </div>
+      <button id="demo-reset-btn" class="text-btn" type="button" style="margin-top:11px;width:100%;text-align:center">체험 기록 초기화</button>
+      <div id="demo-click-status" class="helper" style="margin-top:8px">체험 버튼은 실제 로그인/Firebase 설정과 무관하게 작동합니다.</div>
+    </div>
+
+    <button id="google-login-btn" class="btn google-btn">G&nbsp; Google 계정으로 계속</button>
+    <div class="divider">또는 이메일</div>
+    <input id="auth-email" class="input" type="email" autocomplete="email" placeholder="이메일" />
+    <input id="auth-password" class="input" style="margin-top:9px" type="password" autocomplete="current-password" placeholder="비밀번호 (6자 이상)" />
+    <button id="email-auth-btn" class="btn btn-primary" style="margin-top:11px">로그인</button>
+    <div class="auth-switch"><span id="auth-switch-copy">계정이 없나요?</span> <button id="auth-switch-btn">회원가입</button></div>
+    <div id="backend-warning" class="setup-warning">현재 파일은 <b>프로토타입 테스트 모드</b>입니다. 실제 학생 간 공유는 Firebase 연결 후 활성화됩니다.</div>
+  </section>
+
+  <!-- ONBOARDING -->
+  <section id="onboarding-screen" class="screen hidden">
+    <div class="topbar"><div class="brand-mini">CHALLENGE SETUP</div><button id="onboarding-logout" class="icon-btn">↪</button></div>
+    <div class="step-dots"><div class="step-dot active" data-stepdot="1"></div><div class="step-dot" data-stepdot="2"></div></div>
+
+    <div id="profile-step">
+      <div class="eyebrow">STEP 1 · 본인 확인</div>
+      <h1>이름과 학번을<br>정확히 입력해주세요.</h1>
+      <p class="body-sm muted" style="margin-top:10px">교수자에게는 실명과 학번으로 표시되며, 다른 학생에게는 절대 공개되지 않습니다.</p>
+      <div class="field"><label for="profile-name">이름</label><input id="profile-name" class="input" maxlength="30" placeholder="예: 김한결"></div>
+      <div class="field"><label for="profile-student-id">학번</label><input id="profile-student-id" class="input" inputmode="numeric" pattern="[0-9]*" maxlength="7" placeholder="예: 1234567"></div>
+      <p class="helper">학번은 <b>반드시 7자리 숫자</b>로 입력합니다. 다른 형식은 다음 단계로 넘어갈 수 없습니다.</p>
+      <div class="field"><label>나의 성장 캐릭터 · 하나만 선택</label><p class="helper" style="margin:0 0 8px">15주 동안 함께 성장할 캐릭터를 골라주세요. 4가지 캐릭터 모두 동일한 5단계 성장을 합니다.</p><div id="character-grid" class="character-grid"></div></div>
+      <button id="profile-next-btn" class="btn btn-primary" style="margin-top:22px">다음</button>
+    </div>
+
+    <div id="goal-step" class="hidden">
+      <div class="eyebrow">STEP 2 · 15주 행동목표</div>
+      <h1>“열심히 공부하기” 대신<br>실제로 할 행동을 정하세요.</h1>
+      <div class="guide-card">
+        <div class="small muted">좋은 목표의 공식</div>
+        <div class="guide-formula">언제 + 어디서 + 무엇을 + 얼마나</div>
+        <div class="example-list">
+          <div class="example-item">✓ 매주 화요일 저녁, 도서관에서 전공책을 <b>60분 읽고 핵심 3줄을 정리한다.</b></div>
+          <div class="example-item">✓ 매주 목요일 오후, 스터디룸에서 영어 논문을 <b>90분 읽고 모르는 표현 5개를 기록한다.</b></div>
+        </div>
+      </div>
+      <div class="field"><label for="goal-text">15주 동안 반복할 행동</label><textarea id="goal-text" class="textarea" maxlength="180" placeholder="예: 도서관에서 전공책을 60분 읽고 핵심 내용을 3줄로 정리한다."></textarea></div>
+      <div class="field"><label>실천 요일 · 하나만 선택</label><div class="weekday-grid" id="weekday-grid"></div></div>
+      <div class="two-col">
+        <div class="field"><label for="start-time">시작 시간</label><select id="start-time" class="select"></select></div>
+        <div class="field"><label for="duration">실천 시간</label><select id="duration" class="select"></select></div>
+      </div>
+      <p class="helper">실천 시간은 최대 2시간까지만 선택할 수 있습니다. 너무 긴 목표보다 매주 반복 가능한 목표가 더 중요합니다.</p>
+      <div id="goal-edit-history-note" class="history-note hidden">✎ 목표를 수정하면 기존 목표는 삭제되지 않습니다. <b>이전 목표·요일·시간과 변경 시각이 모두 변경 이력에 남고</b>, 이미 제출한 주차에는 제출 당시 목표가 그대로 보존됩니다.</div>
+      <div class="panel" style="margin-top:14px;padding:13px">
+        <div class="small muted">운영 기간</div>
+        <div style="font-size:13px;font-weight:800;margin-top:4px">2026.09.07 ~ 2026.12.20 · 총 15주</div>
+        <div class="helper" style="margin-top:5px">※ 15회를 정확히 구성하기 위해 9월 둘째 주부터 15개 주차를 생성합니다.</div>
+      </div>
+      <button id="goal-save-btn" class="btn btn-primary" style="margin-top:18px">15주 챌린지 시작</button>
+      <button id="goal-back-btn" class="btn btn-secondary" style="margin-top:9px">이전</button>
+    </div>
+  </section>
+
+  <!-- MAIN APP -->
+  <main id="main-screen" class="screen hidden">
+    <section class="tab-view scroll-screen" id="tab-home">
+      <div class="welcome">
+        <div><div class="eyebrow">15-week learning challenge</div><div class="welcome-name"><span id="home-name">도전자</span>님,<br>이번 주도 이어가요.</div></div>
+        <div class="avatar" id="home-avatar"></div>
+      </div>
+      <div id="prototype-banner" class="prototype-banner hidden">
+        <strong>🧪 PROTOTYPE TEST MODE</strong>
+        <p>현재 날짜와 무관하게 원하는 주차를 선택해 인증 과정을 테스트할 수 있습니다. 실제 운영 시 이 모드는 꺼집니다.</p>
+        <div class="prototype-row"><div class="field"><label for="test-week-select">테스트할 주차</label><select id="test-week-select" class="select"></select></div><span class="prototype-chip">일정 제한 해제</span></div>
+      </div>
+      <div class="panel growth-panel" id="character-growth-panel">
+        <div id="growth-avatar"></div>
+        <div class="growth-main"><div class="growth-top"><div><div id="growth-level" class="growth-level">Lv.1</div><div id="growth-stage-name" class="growth-stage">첫걸음</div></div><span id="growth-badge-count" class="badge-pill">⏰ 0</span></div><div class="growth-xp-meta"><span id="growth-character-name">나의 캐릭터</span><span id="growth-xp-text">0 XP</span></div><div class="progress-track"><div id="growth-xp-fill" class="progress-fill" style="width:0%"></div></div><div id="growth-next" class="growth-note">챌린지를 완료할수록 캐릭터가 성장합니다.</div></div>
+      </div>
+      <div class="panel glow-panel hero-card">
+        <div class="tag pink" id="home-week-tag">WEEK 1</div>
+        <div class="week-big" id="home-week-title">1주차</div>
+        <div class="quest-text" id="home-goal">행동 목표를 불러오는 중...</div>
+        <div class="schedule-line">🗓 <span id="home-schedule">-</span></div>
+        <div class="schedule-line">⏱ <span id="home-duration">-</span></div>
+        <div class="progress-wrap"><div class="progress-meta"><span>15주 진행률</span><span id="home-progress-text">0 / 15</span></div><div class="progress-track"><div id="home-progress-fill" class="progress-fill" style="width:0%"></div></div></div>
+        <button id="home-submit-btn" class="btn btn-primary" style="margin-top:16px;width:100%">이번 주 인증하기 📸</button>
+        <div id="home-submit-help" class="helper" style="text-align:center"></div>
+      </div>
+      <div class="home-grid">
+        <div class="metric"><span>완료한 주차</span><b id="metric-completed">0</b></div>
+        <div class="metric"><span>정시 배지</span><b id="metric-badges">0</b></div>
+        <div class="metric"><span>연속 실천</span><b id="metric-streak">0</b></div>
+      </div>
+      <div class="section-head"><h3>친구들의 최근 인증</h3><button class="text-btn" data-goto="feed">전체보기</button></div>
+      <div id="home-mini-feed" class="mini-feed"></div>
+    </section>
+
+    <section class="tab-view scroll-screen hidden" id="tab-weeks">
+      <div class="topbar"><div><div class="eyebrow">15 WEEKS</div><h2>나의 챌린지 기록</h2></div></div>
+      <div id="week-list" class="week-list"></div>
+    </section>
+
+    <section class="tab-view scroll-screen hidden" id="tab-feed">
+      <div class="topbar"><div><div class="eyebrow">ANONYMOUS FEED</div><h2>우리의 습관 발자취</h2></div></div>
+      <div class="feed-filter-wrap"><div id="feed-week-filter" class="feed-week-filter"></div></div>
+      <div class="panel" style="padding:13px;margin-bottom:12px"><div class="body-sm">다른 학생의 인증은 <b style="color:var(--blue)">익명</b>으로만 표시됩니다. 이름·학번·이메일은 학생 피드에 노출되지 않습니다.</div></div>
+      <div id="feed-list" class="feed-list"></div>
+    </section>
+
+    <section class="tab-view scroll-screen hidden" id="tab-profile">
+      <div class="topbar"><div><div class="eyebrow">MY PROFILE</div><h2>내 설정</h2></div></div>
+      <div class="panel">
+        <div class="profile-head"><div class="profile-avatar" id="profile-avatar"></div><div class="profile-name" id="profile-name-view">-</div><div class="profile-id" id="profile-id-view">-</div></div>
+        <div class="profile-row"><span>로그인</span><span id="profile-email-view">-</span></div>
+        <div class="profile-row"><span>익명 표시명</span><span id="profile-anon-view">-</span></div>
+        <div class="profile-row"><span>성장 캐릭터</span><span id="profile-character-view">-</span></div>
+        <div class="profile-row"><span>성장 상태</span><span id="profile-growth-view">-</span></div>
+        <div class="profile-row"><span>정시 실천 배지</span><span id="profile-badge-view">0개</span></div>
+        <div class="profile-row"><span>행동 목표</span><span id="profile-goal-view">-</span></div>
+        <div class="profile-row"><span>실천 일정</span><span id="profile-schedule-view">-</span></div>
+      </div>
+      <button id="edit-goal-btn" class="btn btn-secondary" style="margin-top:12px;width:100%">행동 목표·일정 수정</button>
+      <button id="goal-history-btn" class="btn btn-secondary" style="margin-top:9px;width:100%">목표 변경 이력 보기 <span id="goal-history-count" class="tag blue">v1</span></button>
+      <button id="logout-btn" class="btn btn-danger" style="margin-top:9px;width:100%">로그아웃</button>
+    </section>
+
+    <section class="tab-view scroll-screen hidden" id="tab-admin">
+      <div class="topbar"><div><div class="eyebrow">INSTRUCTOR ONLY</div><h2>교수자 현황판</h2></div><div class="tag pink">실명 보기</div></div>
+      <div class="panel">
+        <div class="field" style="margin-top:0"><label for="admin-week-select">확인할 주차</label><select id="admin-week-select" class="select"></select></div>
+        <div class="admin-summary">
+          <div class="admin-metric"><b id="admin-total">0</b><span>전체</span></div>
+          <div class="admin-metric"><b id="admin-submitted" style="color:var(--green)">0</b><span>제출</span></div>
+          <div class="admin-metric"><b id="admin-missing" style="color:var(--danger)">0</b><span>미제출</span></div>
+          <div class="admin-metric"><b id="admin-punctual" style="color:var(--yellow)">0</b><span>이번 주 정시</span></div>
+        </div>
+        <div id="admin-week-date" class="small muted"></div>
+      </div>
+      <div class="section-head"><h3>학생별 제출 현황</h3><div class="admin-action-row"><button id="admin-export-btn" class="text-btn">엑셀 다운로드</button><button id="admin-refresh-btn" class="text-btn">새로고침</button></div></div>
+      <div class="admin-export-note">엑셀에는 이름·학번, 1~15주차 제출 여부(0/1), 총 제출 수, 정시 제출 수가 포함됩니다.</div>
+      <div id="student-table" class="student-table" style="margin-top:10px"></div>
+    </section>
+
+    <nav class="bottom-nav" id="bottom-nav">
+      <button class="nav-btn active" data-tab="home"><span class="nav-ico">⌂</span><span>홈</span></button>
+      <button class="nav-btn" data-tab="weeks"><span class="nav-ico">▦</span><span>15주</span></button>
+      <button class="nav-btn" data-tab="feed"><span class="nav-ico">◉</span><span>피드</span></button>
+      <button class="nav-btn" data-tab="profile"><span class="nav-ico">●</span><span>내 정보</span></button>
+      <button class="nav-btn hidden" id="admin-nav-btn" data-tab="admin"><span class="nav-ico">◆</span><span>관리</span></button>
+    </nav>
+  </main>
+
+  <!-- SUBMISSION MODAL -->
+  <div id="submission-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-handle"></div>
+      <div class="modal-head"><div><div class="eyebrow" id="submit-week-label">WEEK 1</div><h2>이번 주 챌린지 인증</h2></div><button class="close-btn" data-close="submission-modal">✕</button></div>
+      <div class="panel" style="padding:13px;margin-bottom:12px"><div class="small muted">이번 주 목표</div><div id="submit-goal-text" style="font-size:14px;font-weight:800;line-height:1.55;margin-top:5px"></div></div>
+      <div class="field" style="margin-top:0"><label>1. 인증샷 촬영</label>
+        <div class="camera-box" id="camera-box"><div class="camera-placeholder" id="camera-placeholder">📷<br><br><b>카메라 사용을 허용</b>한 뒤 인증샷을 촬영하세요.<br>촬영 시 날짜와 시간이 사진 오른쪽 아래에 자동으로 기록됩니다.</div><video id="camera-video" class="hidden" autoplay playsinline muted></video><img id="captured-preview" class="hidden" alt="인증샷 미리보기"></div>
+        <input id="camera-file-input" type="file" accept="image/*" capture="environment" class="hidden">
+        <div class="camera-actions"><button id="camera-file-btn" class="btn btn-primary" type="button">📷 카메라로 촬영</button><button id="camera-start-btn" class="btn btn-secondary" type="button">실시간 카메라</button></div>
+        <div class="camera-actions" style="margin-top:9px"><button id="camera-capture-btn" class="btn btn-primary" disabled type="button">실시간 촬영</button><button id="prototype-photo-btn" class="btn btn-secondary" type="button">🧪 테스트 사진 생성</button></div>
+        <button id="camera-retake-btn" class="btn btn-secondary hidden" style="width:100%;margin-top:9px" type="button">다시 촬영</button>
+      </div>
+      <div id="prototype-punctual-box" class="prototype-banner hidden" style="margin-top:12px"><strong>🧪 정시 배지 테스트</strong><p>현재 날짜가 실제 운영기간 밖이어도 배지 UI를 확인할 수 있습니다.</p><label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12px"><input id="prototype-punctual-check" type="checkbox"> 이번 테스트 제출을 ‘정해진 시간에 실천’으로 가정</label></div>
+      <div class="field"><label for="reflection-text">2. 오늘의 성찰 및 다음 주를 위한 다짐</label><textarea id="reflection-text" class="textarea" maxlength="700" placeholder="오늘 어떤 행동을 실천했나요? 잘된 점, 어려웠던 점, 다음 주에 유지하거나 바꾸고 싶은 점을 적어주세요."></textarea><div class="helper"><span id="reflection-count">0</span>/700 · 최소 10자 이상</div></div>
+      <button id="submit-final-btn" class="btn btn-primary" style="width:100%;margin-top:16px">인증 제출하고 주차 완료</button>
+    </div>
+  </div>
+
+  <!-- DETAIL MODAL -->
+  <div id="detail-modal" class="modal hidden"><div class="modal-card"><div class="modal-handle"></div><div class="modal-head"><div><div class="eyebrow" id="detail-week-label">WEEK</div><h2>완료 기록</h2></div><button class="close-btn" data-close="detail-modal">✕</button></div><div class="panel" style="padding:13px"><div class="small muted">완수한 목표</div><div id="detail-goal" style="font-size:14px;font-weight:800;line-height:1.55;margin-top:5px"></div><div id="detail-goal-schedule" class="helper"></div><div id="detail-badge" style="margin-top:9px"></div></div><img id="detail-photo" class="detail-photo" alt="인증샷"><div class="small muted" style="margin:8px 0 7px">성찰 및 다짐</div><div id="detail-reflection" class="detail-reflection"></div><div id="detail-meta" class="helper"></div></div></div>
+
+  <!-- GOAL HISTORY MODAL -->
+  <div id="goal-history-modal" class="modal hidden"><div class="modal-card"><div class="modal-handle"></div><div class="modal-head"><div><div class="eyebrow">GOAL VERSION HISTORY</div><h2>목표 변경 이력</h2></div><button class="close-btn" data-close="goal-history-modal">✕</button></div><div class="panel" style="padding:13px;margin-bottom:12px"><div class="body-sm">목표를 수정해도 이전 설정은 삭제되지 않습니다. 가장 최근 버전이 현재 적용 중인 목표입니다.</div></div><div id="goal-history-list" class="history-list"></div></div></div>
+
+  <!-- INSTRUCTOR: ONE STUDENT'S FULL CHALLENGE HISTORY -->
+  <div id="student-history-modal" class="modal hidden"><div class="modal-card"><div class="modal-handle"></div><div class="modal-head"><div><div class="eyebrow">STUDENT CHALLENGE HISTORY</div><h2 id="student-history-name">학생 챌린지 기록</h2><div id="student-history-id" class="helper"></div></div><button class="close-btn" data-close="student-history-modal">✕</button></div><div id="student-history-summary" class="student-history-summary"></div><div id="student-history-list" class="student-history-feed"></div></div></div>
+
+  <div class="toast-wrap" id="toast-wrap"></div>
+</div>
+
+<script>
+  // ================================================================
+  // 1) Firebase 프로젝트를 만든 뒤 아래 값만 교체하면 실제 다중 사용자 앱으로 동작합니다.
+  // 2) instructorEmails에 교수자 로그인 이메일을 넣으면 해당 계정에 관리자 탭이 표시됩니다.
+  // 3) 값이 비어 있으면 이 파일은 로컬 '프로토타입 체험 모드'로 작동합니다.
+  // ================================================================
+  const APP_CONFIG = {
+    firebase: {
+      apiKey: "YOUR_FIREBASE_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    },
+    instructorEmails: [
+      "YOUR_INSTRUCTOR_EMAIL@example.com"
+    ],
+    allowDemoWhenUnconfigured: true,
+    prototypeTesting: true // 실제 운영 배포 전에는 false로 변경
+  };
+
+  const TOTAL_WEEKS = 15;
+  const PROGRAM_START = new Date('2026-09-07T00:00:00'); // Monday of first challenge week
+  const PROGRAM_END = new Date('2026-12-20T23:59:59');   // Sunday of 15th challenge week
+  const WEEKDAY_NAMES = ['일','월','화','수','목','금','토'];
+  const DURATION_OPTIONS = [30,45,60,75,90,105,120];
+  const XP_PER_COMPLETION = 100;
+  const GROWTH_STAGES = [
+    {stage:1,minCompleted:0,minXp:0,name:'새싹 동료',mark:'🌱'},
+    {stage:2,minCompleted:3,minXp:300,name:'습관 견습생',mark:'🎒'},
+    {stage:3,minCompleted:6,minXp:600,name:'집중 탐험가',mark:'✨'},
+    {stage:4,minCompleted:10,minXp:1000,name:'습관 수호자',mark:'⚡'},
+    {stage:5,minCompleted:13,minXp:1300,name:'최종 성장형',mark:'👑'}
+  ];
+  const CHARACTER_TYPES = {
+    rabbit:{name:'몽글 토끼',emoji:'🐰',desc:'차분하게 한 걸음씩'},
+    fox:{name:'반짝 여우',emoji:'🦊',desc:'영리하게 루틴을 설계'},
+    otter:{name:'도담 수달',emoji:'🦦',desc:'즐겁게 꾸준함을 쌓기'},
+    panda:{name:'포근 판다',emoji:'🐼',desc:'느긋하지만 끝까지'}
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    authScreen:$('auth-screen'), onboardingScreen:$('onboarding-screen'), mainScreen:$('main-screen'),
+    authEmail:$('auth-email'), authPassword:$('auth-password'), emailAuthBtn:$('email-auth-btn'), googleLoginBtn:$('google-login-btn'),
+    authSwitchBtn:$('auth-switch-btn'), authSwitchCopy:$('auth-switch-copy'), backendWarning:$('backend-warning'), demoLoginBtn:$('demo-login-btn'), demoInstructorBtn:$('demo-instructor-btn'), demoRoleRow:$('demo-role-row'), demoResetBtn:$('demo-reset-btn'),
+    profileStep:$('profile-step'), goalStep:$('goal-step'), profileName:$('profile-name'), profileStudentId:$('profile-student-id'), profileNextBtn:$('profile-next-btn'), characterGrid:$('character-grid'),
+    goalText:$('goal-text'), weekdayGrid:$('weekday-grid'), startTime:$('start-time'), duration:$('duration'), goalSaveBtn:$('goal-save-btn'), goalBackBtn:$('goal-back-btn'), goalEditHistoryNote:$('goal-edit-history-note'),
+    bottomNav:$('bottom-nav'), adminNavBtn:$('admin-nav-btn'),
+    homeName:$('home-name'), homeAvatar:$('home-avatar'), homeWeekTag:$('home-week-tag'), homeWeekTitle:$('home-week-title'), homeGoal:$('home-goal'), homeSchedule:$('home-schedule'), homeDuration:$('home-duration'), homeProgressText:$('home-progress-text'), homeProgressFill:$('home-progress-fill'), homeSubmitBtn:$('home-submit-btn'), homeSubmitHelp:$('home-submit-help'), metricCompleted:$('metric-completed'), metricBadges:$('metric-badges'), metricStreak:$('metric-streak'), homeMiniFeed:$('home-mini-feed'), prototypeBanner:$('prototype-banner'), testWeekSelect:$('test-week-select'), growthAvatar:$('growth-avatar'), growthLevel:$('growth-level'), growthStageName:$('growth-stage-name'), growthBadgeCount:$('growth-badge-count'), growthCharacterName:$('growth-character-name'), growthXpText:$('growth-xp-text'), growthXpFill:$('growth-xp-fill'), growthNext:$('growth-next'),
+    weekList:$('week-list'), feedList:$('feed-list'), feedWeekFilter:$('feed-week-filter'),
+    profileAvatar:$('profile-avatar'), profileNameView:$('profile-name-view'), profileIdView:$('profile-id-view'), profileEmailView:$('profile-email-view'), profileAnonView:$('profile-anon-view'), profileCharacterView:$('profile-character-view'), profileGrowthView:$('profile-growth-view'), profileBadgeView:$('profile-badge-view'), profileGoalView:$('profile-goal-view'), profileScheduleView:$('profile-schedule-view'), editGoalBtn:$('edit-goal-btn'), goalHistoryBtn:$('goal-history-btn'), goalHistoryCount:$('goal-history-count'), logoutBtn:$('logout-btn'),
+    submissionModal:$('submission-modal'), submitWeekLabel:$('submit-week-label'), submitGoalText:$('submit-goal-text'), prototypePunctualBox:$('prototype-punctual-box'), prototypePunctualCheck:$('prototype-punctual-check'), cameraVideo:$('camera-video'), cameraPlaceholder:$('camera-placeholder'), capturedPreview:$('captured-preview'), cameraStartBtn:$('camera-start-btn'), cameraCaptureBtn:$('camera-capture-btn'), cameraRetakeBtn:$('camera-retake-btn'), cameraFileInput:$('camera-file-input'), cameraFileBtn:$('camera-file-btn'), prototypePhotoBtn:$('prototype-photo-btn'), reflectionText:$('reflection-text'), reflectionCount:$('reflection-count'), submitFinalBtn:$('submit-final-btn'),
+    detailModal:$('detail-modal'), detailWeekLabel:$('detail-week-label'), detailGoal:$('detail-goal'), detailGoalSchedule:$('detail-goal-schedule'), detailBadge:$('detail-badge'), detailPhoto:$('detail-photo'), detailReflection:$('detail-reflection'), detailMeta:$('detail-meta'), goalHistoryModal:$('goal-history-modal'), goalHistoryList:$('goal-history-list'),
+    adminWeekSelect:$('admin-week-select'), adminTotal:$('admin-total'), adminSubmitted:$('admin-submitted'), adminMissing:$('admin-missing'), adminPunctual:$('admin-punctual'), adminWeekDate:$('admin-week-date'), studentTable:$('student-table'), adminRefreshBtn:$('admin-refresh-btn'), adminExportBtn:$('admin-export-btn'), studentHistoryModal:$('student-history-modal'), studentHistoryName:$('student-history-name'), studentHistoryId:$('student-history-id'), studentHistorySummary:$('student-history-summary'), studentHistoryList:$('student-history-list'),
+    toastWrap:$('toast-wrap')
+  };
+
+  let authMode = 'login';
+  let currentUser = null;
+  let profile = null;
+  let submissions = [];
+  let demoRole = 'student';
+  let prototypeWeek = 1;
+  let publicFeed = [];
+  let homeRecentFeed = [];
+  let selectedFeedWeek = 0;
+  let selectedWeekday = null;
+  let selectedCharacter = null;
+  let activeSubmissionWeek = null;
+  let cameraStream = null;
+  let capturedBlob = null;
+  let capturedDataUrl = '';
+  let firebaseReady = false;
+  let fb = {};
+  let demoMode = false;
+  let editingGoal = false;
+  let adminStudentsCache = [];
+  let adminSubmissionsCache = [];
+
+  const isFirebaseConfigValid = () => !Object.values(APP_CONFIG.firebase).some(v => !v || String(v).startsWith('YOUR_'));
+  const safeText = (str='') => String(str).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[ch]));
+  const pad = n => String(n).padStart(2,'0');
+  const formatDate = d => `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())}`;
+  const formatDateTime = d => `${formatDate(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const dateKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const startOfDay = d => new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  const now = () => window.__QUEST_TEST_NOW ? new Date(window.__QUEST_TEST_NOW) : new Date();
+  const hashCode = str => { let h=0; for(let i=0;i<str.length;i++) h=((h<<5)-h)+str.charCodeAt(i), h|=0; return Math.abs(h); };
+  const makeAnon = uid => `도전자 ${String(hashCode(uid)%900+100)}`;
+
+  function getGrowthState(completedCount=0){
+    const completed=Math.max(0,Math.min(TOTAL_WEEKS,Number(completedCount)||0));
+    const xp=completed*XP_PER_COMPLETION;
+    let info=GROWTH_STAGES[0];
+    for(const st of GROWTH_STAGES){ if(completed>=st.minCompleted) info=st; }
+    const idx=GROWTH_STAGES.findIndex(st=>st.stage===info.stage);
+    const next=GROWTH_STAGES[idx+1]||null;
+    const progress=next?Math.max(0,Math.min(100,(xp-info.minXp)/(next.minXp-info.minXp)*100)):100;
+    return {...info,xp,completed,next,progress};
+  }
+  function characterMarkup(type,completedCount=0,size='medium'){
+    const c=CHARACTER_TYPES[type]||CHARACTER_TYPES.rabbit; const g=getGrowthState(completedCount);
+    return `<div class="character-orb ${size} stage-${g.stage}" title="${safeText(c.name)} · ${safeText(g.name)}"><span class="animal">${c.emoji}</span><span class="evo-mark">${g.mark}</span></div>`;
+  }
+  function renderCharacterChoices(){
+    if(!els.characterGrid)return; els.characterGrid.innerHTML=Object.entries(CHARACTER_TYPES).map(([key,c])=>`<button type="button" class="character-choice ${selectedCharacter===key?'active':''}" data-character="${key}">${characterMarkup(key,0,'medium')}<div class="character-choice-name">${safeText(c.name)}</div><div class="character-choice-desc">${safeText(c.desc)}</div></button>`).join('');
+    els.characterGrid.querySelectorAll('[data-character]').forEach(b=>b.onclick=()=>{selectedCharacter=b.dataset.character;renderCharacterChoices();});
+  }
+  function submissionDateValue(sub){
+    const raw=sub?.submittedAt||sub?.capturedAt;
+    if(raw?.toDate)return raw.toDate();
+    const d=new Date(raw||0); return isNaN(d)?null:d;
+  }
+  function getScheduledWindow(weekNo,weekday,startTime,duration){
+    const d=getScheduledDate(weekNo,Number(weekday)); const [hh,mm]=String(startTime||'00:00').split(':').map(Number); d.setHours(hh||0,mm||0,0,0); const end=new Date(d.getTime()+(Number(duration)||0)*60000); return {start:d,end};
+  }
+  function isPunctualSubmission(sub,studentProfile=null){
+    if(sub?.prototypePunctual===true)return true;
+    const d=submissionDateValue(sub); if(!d)return false;
+    const weekday=sub?.goalWeekday ?? studentProfile?.weekday; const startTime=sub?.goalStartTime||studentProfile?.startTime; const duration=Number(sub?.goalDuration||studentProfile?.duration||0);
+    if(weekday===undefined||weekday===null||!startTime||!duration)return false;
+    const win=getScheduledWindow(Number(sub.week),Number(weekday),startTime,duration);
+    return d>=win.start && d<=win.end;
+  }
+  function punctualBadgeCount(list=submissions,studentProfile=profile){return list.filter(s=>isPunctualSubmission(s,studentProfile)).length;}
+
+  function formatGoalSchedule(g){
+    if(!g || (g.weekday!==0 && !g.weekday)) return '-';
+    const day=WEEKDAY_NAMES[Number(g.weekday)]||'-';
+    const duration=Number(g.duration)||0;
+    return `매주 ${day}요일 ${g.startTime||'-'} · ${duration}분`;
+  }
+  function goalSnapshot(source,version=1,changedAt=new Date().toISOString(),changeType='initial'){
+    return {version:Number(version)||1,goalText:source?.goalText||'',weekday:Number(source?.weekday),startTime:source?.startTime||'',duration:Number(source?.duration)||0,changedAt,changeType};
+  }
+  function getGoalHistory(p=profile){
+    const raw=Array.isArray(p?.goalHistory)?p.goalHistory.filter(Boolean):[];
+    if(raw.length) return [...raw].map((h,i)=>({...h,version:Number(h.version)||i+1})).sort((a,b)=>Number(a.version)-Number(b.version));
+    if(p?.goalText && (p.weekday===0||p.weekday) && p.startTime && p.duration){
+      return [goalSnapshot(p,1,p.goalCreatedAt||p.updatedAt||new Date().toISOString(),'initial')];
+    }
+    return [];
+  }
+  function goalSettingsChanged(a,b){
+    if(!a) return true;
+    return String(a.goalText||'').trim()!==String(b.goalText||'').trim() || Number(a.weekday)!==Number(b.weekday) || String(a.startTime||'')!==String(b.startTime||'') || Number(a.duration)!==Number(b.duration);
+  }
+  function goalHistoryHtml(history,{compact=false}={}){
+    if(!history.length) return '<div class="panel body-sm muted">아직 목표 이력이 없습니다.</div>';
+    const latest=Number(history[history.length-1]?.version||history.length);
+    return [...history].reverse().map(h=>{
+      const d=h.changedAt?.toDate?h.changedAt.toDate():new Date(h.changedAt||Date.now());
+      const current=Number(h.version)===latest;
+      if(compact) return `<div class="admin-history-item"><b>v${Number(h.version)}${current?' · 현재':''}</b> · ${safeText(formatDateTime(d))}<br>${safeText(h.goalText||'')}<br><span class="muted">${safeText(formatGoalSchedule(h))}</span></div>`;
+      return `<div class="history-item ${current?'current':''}"><div class="history-head"><div class="history-version">v${Number(h.version)}${current?'<span class="history-badge">현재 적용</span>':''}</div><div class="history-date">${safeText(formatDateTime(d))}</div></div><div class="history-goal">${safeText(h.goalText||'')}</div><div class="history-schedule">${safeText(formatGoalSchedule(h))}</div></div>`;
+    }).join('');
+  }
+
+  function toast(message,type='info'){
+    els.toastWrap.innerHTML = `<div class="toast ${type}">${safeText(message)}</div>`;
+    clearTimeout(toast.t); toast.t=setTimeout(()=>els.toastWrap.innerHTML='',2800);
+  }
+
+  function showScreen(name){
+    els.authScreen.classList.toggle('hidden', name!=='auth');
+    els.onboardingScreen.classList.toggle('hidden', name!=='onboarding');
+    els.mainScreen.classList.toggle('hidden', name!=='main');
+  }
+
+  function setTab(tab){
+    document.querySelectorAll('.tab-view').forEach(v=>v.classList.add('hidden'));
+    $(`tab-${tab}`).classList.remove('hidden');
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+    if(tab==='feed') loadPublicFeed();
+    if(tab==='admin') loadAdminDashboard();
+  }
+
+  function getWeekBounds(weekNo){
+    const start = new Date(PROGRAM_START); start.setDate(start.getDate()+(weekNo-1)*7);
+    const end = new Date(start); end.setDate(end.getDate()+6); end.setHours(23,59,59,999);
+    return {start,end};
+  }
+
+  function getScheduledDate(weekNo, weekday){
+    const {start} = getWeekBounds(weekNo); // Monday
+    const mondayBased = weekday===0 ? 6 : weekday-1;
+    const d = new Date(start); d.setDate(d.getDate()+mondayBased); d.setHours(0,0,0,0); return d;
+  }
+
+  function getCurrentProgramWeek(){
+    const t = startOfDay(now());
+    if(t < startOfDay(PROGRAM_START)) return 1;
+    if(t > startOfDay(PROGRAM_END)) return TOTAL_WEEKS;
+    return Math.min(TOTAL_WEEKS,Math.max(1,Math.floor((t-startOfDay(PROGRAM_START))/(7*86400000))+1));
+  }
+
+  function isPrototypeTesting(){ return !!APP_CONFIG.prototypeTesting; }
+  function getActiveWeek(){ return isPrototypeTesting() ? prototypeWeek : getCurrentProgramWeek(); }
+
+  function getWeekState(weekNo){
+    const sub=submissions.find(s=>Number(s.week)===weekNo);
+    if(sub) return {status:'done',sub};
+    const {start,end}=getWeekBounds(weekNo);
+    if(isPrototypeTesting()) return {status:'test',start,end};
+    const t=now();
+    if(t<start) return {status:'future',start,end};
+    if(t>end) return {status:'expired',start,end};
+    return {status:'open',start,end};
+  }
+
+  function computeStreak(){
+    let streak=0;
+    const sorted=[...submissions].sort((a,b)=>Number(a.week)-Number(b.week));
+    let prev=null;
+    for(const s of sorted){ if(prev===null || Number(s.week)===prev+1) streak++; else streak=1; prev=Number(s.week); }
+    return streak;
+  }
+
+  function populateSelectors(){
+    els.weekdayGrid.innerHTML='';
+    ['월','화','수','목','금','토','일'].forEach((name,i)=>{
+      const weekday=i===6?0:i+1;
+      const b=document.createElement('button'); b.type='button'; b.className='weekday-btn'; b.textContent=name; b.dataset.weekday=weekday;
+      b.onclick=()=>{selectedWeekday=weekday; document.querySelectorAll('.weekday-btn').forEach(x=>x.classList.toggle('active',Number(x.dataset.weekday)===weekday));};
+      els.weekdayGrid.appendChild(b);
+    });
+    els.startTime.innerHTML='';
+    for(let h=7;h<=22;h++) for(const m of [0,30]){ const val=`${pad(h)}:${pad(m)}`; const o=new Option(val,val); els.startTime.add(o); }
+    els.duration.innerHTML='';
+    DURATION_OPTIONS.forEach(min=>els.duration.add(new Option(min===120?'2시간':min>=60?`${Math.floor(min/60)}시간 ${min%60?min%60+'분':''}`.trim():`${min}분`,String(min))));
+    els.adminWeekSelect.innerHTML='';
+    for(let w=1;w<=TOTAL_WEEKS;w++){
+      els.adminWeekSelect.add(new Option(`${w}주차`,String(w)));
+      if(els.testWeekSelect) els.testWeekSelect.add(new Option(`${w}주차`,String(w)));
+    }
+    if(els.testWeekSelect) els.testWeekSelect.value=String(prototypeWeek);
+    renderCharacterChoices();
+    renderFeedWeekFilter();
+  }
+
+  function goalIsConfigured(p){ return !!(p && p.goalText && (p.weekday===0 || p.weekday) && p.startTime && p.duration); }
+  function profileIsComplete(p){ return !!(p && p.name && /^\d{7}$/.test(String(p.studentId||'')) && CHARACTER_TYPES[p.characterType] && goalIsConfigured(p)); }
+  function isInstructorEmail(email=''){ return APP_CONFIG.instructorEmails.map(x=>x.toLowerCase()).includes(String(email).toLowerCase()); }
+  function isInstructor(){ return (demoMode && demoRole==='instructor') || profile?.role==='instructor' || isInstructorEmail(currentUser?.email||''); }
+
+  async function initFirebase(){
+    if(!isFirebaseConfigValid()){
+      els.backendWarning.classList.remove('hidden');
+      if(APP_CONFIG.allowDemoWhenUnconfigured && els.demoRoleRow) els.demoRoleRow.classList.remove('hidden');
+      return;
+    }
+    try{
+      const [{initializeApp},{getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged},{getFirestore,doc,getDoc,setDoc,collection,query,where,getDocs,orderBy,serverTimestamp,limit},{getStorage,ref,uploadBytes,getDownloadURL}] = await Promise.all([
+        import('https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js'),
+        import('https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js'),
+        import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js'),
+        import('https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js')
+      ]);
+      const app=initializeApp(APP_CONFIG.firebase); const auth=getAuth(app); const db=getFirestore(app); const storage=getStorage(app);
+      fb={auth,db,storage,GoogleAuthProvider,signInWithPopup,signInWithRedirect,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged,doc,getDoc,setDoc,collection,query,where,getDocs,orderBy,serverTimestamp,limit,ref,uploadBytes,getDownloadURL};
+      firebaseReady=true;
+      fb.onAuthStateChanged(auth, async user=>{ if(user){currentUser=user; await afterLogin();} else {currentUser=null; profile=null; showScreen('auth');} });
+    }catch(err){ console.error(err); els.backendWarning.classList.remove('hidden'); if(els.demoRoleRow) els.demoRoleRow.classList.remove('hidden'); toast('Firebase 초기화에 실패해 데모 모드로 전환했습니다.','error'); }
+  }
+
+  function demoStore(){
+    return JSON.parse(localStorage.getItem('quest15_demo_store')||'{"profile":null,"submissions":[]}');
+  }
+  function saveDemoStore(store){localStorage.setItem('quest15_demo_store',JSON.stringify(store));}
+
+  async function loadProfile(){
+    if(demoMode){
+      if(demoRole==='instructor'){ profile={name:'교수자',studentId:'',role:'instructor',email:'professor@demo.local'}; return; }
+      profile=demoStore().profile; return;
+    }
+    const snap=await fb.getDoc(fb.doc(fb.db,'users',currentUser.uid));
+    profile=snap.exists()?snap.data():null;
+    if(profile && isInstructor() && profile.role!=='instructor'){ profile.role='instructor'; await saveProfile(profile); }
+  }
+
+  async function saveProfile(data){
+    if(demoMode){ const store=demoStore(); store.profile={...(store.profile||{}),...data}; saveDemoStore(store); profile=store.profile; return; }
+    await fb.setDoc(fb.doc(fb.db,'users',currentUser.uid),data,{merge:true}); profile={...(profile||{}),...data};
+  }
+
+  async function loadSubmissions(){
+    if(demoMode){submissions=demoStore().submissions||[];return;}
+    const q=fb.query(fb.collection(fb.db,'submissions'),fb.where('ownerUid','==',currentUser.uid));
+    const qs=await fb.getDocs(q); submissions=qs.docs.map(d=>({id:d.id,...d.data()}));
+  }
+
+  async function afterLogin(){
+    await loadProfile();
+    if(isInstructor()){
+      if(!profile || profile.role!=='instructor'){
+        await saveProfile({
+          name: profile?.name || currentUser?.displayName || '교수자',
+          studentId: profile?.studentId || '',
+          role:'instructor',
+          email:currentUser?.email||'',
+          updatedAt:new Date().toISOString()
+        });
+      }
+      submissions=[];
+      showScreen('main');
+      await renderAll();
+      setTab('admin');
+      return;
+    }
+    if(!profileIsComplete(profile)){ editingGoal=false; showScreen('onboarding'); showOnboardingStep(1); prefillOnboarding(); return; }
+    await loadSubmissions();
+    showScreen('main'); await renderAll(); setTab('home');
+  }
+
+  function prefillOnboarding(){
+    if(profile){ els.profileName.value=profile.name||''; els.profileStudentId.value=profile.studentId||''; els.goalText.value=profile.goalText||''; selectedCharacter=CHARACTER_TYPES[profile.characterType]?profile.characterType:selectedCharacter; selectedWeekday=(profile.weekday===0||profile.weekday)?Number(profile.weekday):null; els.startTime.value=profile.startTime||'19:00'; els.duration.value=String(profile.duration||60); document.querySelectorAll('.weekday-btn').forEach(x=>x.classList.toggle('active',Number(x.dataset.weekday)===selectedWeekday)); } renderCharacterChoices();
+    els.goalSaveBtn.textContent=editingGoal?'변경사항 저장':'15주 챌린지 시작';
+    if(els.goalEditHistoryNote) els.goalEditHistoryNote.classList.toggle('hidden',!editingGoal);
+  }
+
+  function showOnboardingStep(n){
+    els.profileStep.classList.toggle('hidden',n!==1); els.goalStep.classList.toggle('hidden',n!==2);
+    document.querySelectorAll('.step-dot').forEach(d=>d.classList.toggle('active',Number(d.dataset.stepdot)<=n));
+  }
+
+  async function renderAll(){
+    const instructor=isInstructor();
+    els.adminNavBtn.classList.toggle('hidden',!instructor);
+    const homeNav=document.querySelector('[data-tab="home"]');
+    const weeksNav=document.querySelector('[data-tab="weeks"]');
+    homeNav.classList.toggle('hidden',instructor);
+    weeksNav.classList.toggle('hidden',instructor);
+    const visibleNav=[...document.querySelectorAll('.nav-btn')].filter(b=>!b.classList.contains('hidden')).length;
+    els.bottomNav.style.gridTemplateColumns=`repeat(${visibleNav},1fr)`;
+    await Promise.all([loadPublicFeed(),loadHomeRecentFeed()]);
+    renderProfile();
+    if(els.prototypeBanner) els.prototypeBanner.classList.toggle('hidden',instructor || !isPrototypeTesting());
+    if(!instructor){ renderHome(); renderWeeks(); }
+  }
+
+  function renderHome(){
+    const currentWeek=getActiveWeek(); const wState=getWeekState(currentWeek); const {start:weekStart,end:weekEnd}=getWeekBounds(currentWeek); const scheduledWin=getScheduledWindow(currentWeek,Number(profile.weekday),profile.startTime,Number(profile.duration)); const doneCount=submissions.length; const badgeCount=punctualBadgeCount(); const growth=getGrowthState(doneCount); const char=CHARACTER_TYPES[profile.characterType]||CHARACTER_TYPES.rabbit;
+    els.homeName.textContent=profile.name; els.homeAvatar.innerHTML=characterMarkup(profile.characterType,doneCount,'small'); els.homeWeekTag.textContent=`WEEK ${currentWeek}`; els.homeWeekTitle.textContent=`${currentWeek}주차`; els.homeGoal.textContent=profile.goalText;
+    els.homeSchedule.textContent=`인증 가능 ${formatDate(weekStart)} 00:00 ~ ${formatDate(weekEnd)} 23:59`; els.homeDuration.textContent=`정시 배지 기준 · ${WEEKDAY_NAMES[scheduledWin.start.getDay()]}요일 ${profile.startTime} ~ ${pad(scheduledWin.end.getHours())}:${pad(scheduledWin.end.getMinutes())} (${profile.duration}분)`;
+    els.homeProgressText.textContent=`${doneCount} / ${TOTAL_WEEKS}`; els.homeProgressFill.style.width=`${Math.min(100,doneCount/TOTAL_WEEKS*100)}%`; els.metricCompleted.textContent=doneCount; els.metricBadges.textContent=badgeCount; els.metricStreak.textContent=computeStreak();
+    els.growthAvatar.innerHTML=characterMarkup(profile.characterType,doneCount,'large'); els.growthLevel.textContent=`Lv.${growth.stage}`; els.growthStageName.textContent=growth.name; els.growthBadgeCount.textContent=`⏰ ${badgeCount}`; els.growthCharacterName.textContent=char.name; els.growthXpText.textContent=`${growth.xp} XP`; els.growthXpFill.style.width=`${growth.progress}%`; els.growthNext.textContent=growth.next?`다음 성장까지 ${growth.next.minCompleted-doneCount}주 · 정시 배지는 별도로 누적됩니다.`:'최종 성장형에 도달했습니다! 남은 주차까지 완주해보세요.';
+    if(wState.status==='done'){const badge=isPunctualSubmission(wState.sub,profile);els.homeSubmitBtn.textContent=`이번 주 인증 완료 ${badge?'⏰':'✓'}`;els.homeSubmitBtn.disabled=true;els.homeSubmitHelp.textContent=badge?'정해둔 시간 안에 인증해 정시 실천 배지를 획득했습니다.':'나의 챌린지 기록에서 인증을 다시 확인할 수 있어요.';}
+    else if(wState.status==='test'){els.homeSubmitBtn.textContent=`${currentWeek}주차 테스트 인증하기 📸`;els.homeSubmitBtn.disabled=false;els.homeSubmitHelp.textContent='프로토타입 테스트 모드: 실제 날짜 제한 없이 주차/배지/성장을 확인할 수 있습니다.';}
+    else if(wState.status==='future'){els.homeSubmitBtn.textContent='아직 인증 기간이 아니에요';els.homeSubmitBtn.disabled=true;els.homeSubmitHelp.textContent=`${formatDate(weekStart)} 00:00부터 인증할 수 있습니다.`;}
+    else if(wState.status==='expired'){els.homeSubmitBtn.textContent='인증 기간이 종료됐어요';els.homeSubmitBtn.disabled=true;els.homeSubmitHelp.textContent=`${formatDate(weekEnd)} 23:59에 마감되어 이제 제출할 수 없습니다.`;}
+    else {els.homeSubmitBtn.textContent='이번 주 인증하기 📸';els.homeSubmitBtn.disabled=false;els.homeSubmitHelp.textContent=`이번 주 일요일 23:59까지 언제든 제출 가능 · ${WEEKDAY_NAMES[scheduledWin.start.getDay()]}요일 ${profile.startTime}~${pad(scheduledWin.end.getHours())}:${pad(scheduledWin.end.getMinutes())} 제출 시 ⏰ 배지`;}
+    els.homeMiniFeed.innerHTML=homeRecentFeed.slice(0,3).map(f=>`<div class="mini-feed-item"><img src="${safeText(f.photoURL||'')}" alt="익명 인증"><div><strong>${safeText(f.anonymousName||'익명 도전자')} · ${Number(f.week)}주차 ${f.punctualBadge?'⏰':''}</strong><p>${safeText(f.reflection||'')}</p></div></div>`).join('')||'<div class="panel body-sm muted" style="padding:13px">아직 공개된 인증이 없습니다.</div>';
+  }
+
+  function renderWeeks(){
+    const current=getActiveWeek(); els.weekList.innerHTML='';
+    for(let w=1;w<=TOTAL_WEEKS;w++){
+      const {start,end}=getWeekBounds(w); const scheduledWin=getScheduledWindow(w,Number(profile.weekday),profile.startTime,Number(profile.duration)); const st=getWeekState(w); const card=document.createElement('button'); card.type='button'; card.className=`week-card ${w===current?'current':''} ${st.status==='done'?'done':''}`; card.style.width='100%'; card.style.color='inherit'; card.style.textAlign='left'; card.style.cursor='pointer';
+      let statusHtml=''; if(st.status==='done') statusHtml=`<span class="tag green">완료 ${isPunctualSubmission(st.sub,profile)?'⏰':''}</span>`; else if(st.status==='test') statusHtml='<span class="tag yellow">테스트</span>'; else if(st.status==='open') statusHtml='<span class="tag pink">인증 가능</span>'; else if(st.status==='expired') statusHtml='<span class="tag yellow">기간 종료</span>'; else statusHtml='<span class="tag">예정</span>';
+      card.innerHTML=`<div class="week-no">W${pad(w)}</div><div class="week-info"><strong>${formatDate(start)} ~ ${formatDate(end)}</strong><span>정시 배지 · ${WEEKDAY_NAMES[scheduledWin.start.getDay()]} ${profile.startTime}~${pad(scheduledWin.end.getHours())}:${pad(scheduledWin.end.getMinutes())}</span></div><div class="week-status">${statusHtml}</div>`;
+      card.onclick=()=>{ if(st.status==='done') openDetail(st.sub); else if(st.status==='test'||st.status==='open') openSubmission(w); else if(st.status==='expired') toast('이 주차는 인증 기간이 종료되어 더 이상 제출할 수 없습니다.','error'); else toast('아직 해당 주차의 인증 기간이 아닙니다.'); };
+      els.weekList.appendChild(card);
+    }
+  }
+
+  function renderProfile(){
+    const instructor=isInstructor(); const anon=profile?.anonymousName||makeAnon(currentUser.uid); const doneCount=instructor?0:submissions.length; const badgeCount=instructor?0:punctualBadgeCount(); const growth=getGrowthState(doneCount); const char=CHARACTER_TYPES[profile?.characterType]||CHARACTER_TYPES.rabbit;
+    els.profileAvatar.innerHTML=instructor?'👩‍🏫':characterMarkup(profile?.characterType,doneCount,'medium'); els.profileNameView.textContent=profile?.name||'교수자'; els.profileIdView.textContent=instructor?'교수자 계정':`학번 ${profile?.studentId||'-'}`; els.profileEmailView.textContent=currentUser.email||'데모 계정'; els.profileAnonView.textContent=instructor?'학생에게 노출되지 않음':anon;
+    els.profileCharacterView.textContent=instructor?'—':char.name; els.profileGrowthView.textContent=instructor?'—':`Lv.${growth.stage} · ${growth.name} · ${growth.xp} XP`; els.profileBadgeView.textContent=instructor?'—':`${badgeCount}개`;
+    els.profileGoalView.textContent=instructor?'교수자 계정은 개인 행동목표를 설정하지 않습니다.':(profile?.goalText||'-'); els.profileScheduleView.textContent=instructor?'15주 전체 현황 관리':formatGoalSchedule(profile);
+    const history=instructor?[]:getGoalHistory(profile); els.editGoalBtn.classList.toggle('hidden',instructor); els.goalHistoryBtn.classList.toggle('hidden',instructor); if(!instructor) els.goalHistoryCount.textContent=`v${history.length||1}`;
+  }
+
+  function normalizePublicFeed(items){return [...items].sort((a,b)=>{const da=submissionDateValue(a)?.getTime()||0,db=submissionDateValue(b)?.getTime()||0;return db-da;});}
+  function demoPublicItems(){
+    const ds=demoStore(); const charType=ds.profile?.characterType||'rabbit'; const mine=(ds.submissions||[]).map(s=>({anonymousName:ds.profile?.anonymousName||'도전자 527',week:s.week,photoURL:s.photoURL,reflection:s.reflection,submittedAt:s.submittedAt,punctualBadge:isPunctualSubmission(s,ds.profile),characterType:charType,characterStage:getGrowthState((ds.submissions||[]).filter(x=>Number(x.week)<=Number(s.week)).length).stage}));
+    const sample=[{anonymousName:'도전자 314',week:2,photoURL:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc4MDAnIGhlaWdodD0nNjAwJz48cmVjdCB3aWR0aD0nODAwJyBoZWlnaHQ9JzYwMCcgZmlsbD0nIzEzMWIyZScvPjxyZWN0IHg9JzgwJyB5PSc5MCcgd2lkdGg9JzY0MCcgaGVpZ2h0PSc0MjAnIHJ4PScyOCcgZmlsbD0nIzFiMjk0NCcgc3Ryb2tlPScjMDBlN2ZmJyBzdHJva2Utb3BhY2l0eT0nLjQnIHN0cm9rZS13aWR0aD0nNCcvPjx0ZXh0IHg9JzQwMCcgeT0nMjg1JyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBmaWxsPScjMDBlN2ZmJyBmb250LXNpemU9JzQyJyBmb250LWZhbWlseT0nc2Fucy1zZXJpZicgZm9udC13ZWlnaHQ9JzcwMCc+TEVBUk5JTkcgQ0hBTExFTkdFPC90ZXh0Pjx0ZXh0IHg9JzQwMCcgeT0nMzQ1JyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBmaWxsPScjZGZlN2ZhJyBmb250LXNpemU9JzI2JyBmb250LWZhbWlseT0nc2Fucy1zZXJpZic+QW5vbnltb3VzIFN0dWR5IFByb29mPC90ZXh0Pjwvc3ZnPg==",reflection:'이번 주에는 계획한 시간만큼 집중해서 읽었다. 다음 주에는 시작 10분 전에 자리를 잡아 흐름을 더 안정적으로 만들고 싶다.',submittedAt:'2026-09-16T19:20:00',punctualBadge:true,characterType:'fox',characterStage:2},{anonymousName:'도전자 628',week:1,photoURL:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc4MDAnIGhlaWdodD0nNjAwJz48cmVjdCB3aWR0aD0nODAwJyBoZWlnaHQ9JzYwMCcgZmlsbD0nIzEwMTUyMicvPjx0ZXh0IHg9JzQwMCcgeT0nMzAwJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBmaWxsPScjZmZkNTRkJyBmb250LXNpemU9JzQyJyBmb250LWZhbWlseT0nc2Fucy1zZXJpZic+V0VFS0xZIENIQUxMRU5HRTwvdGV4dD48L3N2Zz4=",reflection:'첫 주라 긴장했지만 계획한 행동을 끝냈다. 다음 주에는 기록까지 더 꼼꼼하게 남겨보겠다.',submittedAt:'2026-09-10T15:00:00',punctualBadge:false,characterType:'panda',characterStage:1}];
+    return normalizePublicFeed([...mine,...sample]);
+  }
+  async function loadPublicFeed(){
+    if(demoMode){ publicFeed=demoPublicItems().filter(f=>!selectedFeedWeek||Number(f.week)===selectedFeedWeek); }
+    else if(firebaseReady){ try{ let q; if(selectedFeedWeek){q=fb.query(fb.collection(fb.db,'publicSubmissions'),fb.where('week','==',selectedFeedWeek));}else{q=fb.query(fb.collection(fb.db,'publicSubmissions'),fb.orderBy('submittedAt','desc'),fb.limit(100));} const qs=await fb.getDocs(q); publicFeed=normalizePublicFeed(qs.docs.map(d=>({id:d.id,...d.data()}))); }catch(e){console.warn(e);publicFeed=[];} }
+    if(!els.mainScreen.classList.contains('hidden')) renderFeed();
+  }
+  async function loadHomeRecentFeed(){
+    if(demoMode){homeRecentFeed=demoPublicItems().slice(0,3);return;} if(!firebaseReady){homeRecentFeed=[];return;}
+    try{const q=fb.query(fb.collection(fb.db,'publicSubmissions'),fb.orderBy('submittedAt','desc'),fb.limit(3));const qs=await fb.getDocs(q);homeRecentFeed=normalizePublicFeed(qs.docs.map(d=>({id:d.id,...d.data()})));}catch(e){console.warn(e);homeRecentFeed=[];}
+  }
+  function renderFeedWeekFilter(){
+    if(!els.feedWeekFilter)return; const opts=[0,...Array.from({length:TOTAL_WEEKS},(_,i)=>i+1)]; els.feedWeekFilter.innerHTML=opts.map(w=>`<button type="button" class="feed-week-chip ${selectedFeedWeek===w?'active':''}" data-feed-week="${w}">${w===0?'전체':w+'주차'}</button>`).join('');
+    els.feedWeekFilter.querySelectorAll('[data-feed-week]').forEach(b=>b.onclick=async()=>{selectedFeedWeek=Number(b.dataset.feedWeek);renderFeedWeekFilter();await loadPublicFeed();});
+  }
+  function renderFeed(){
+    renderFeedWeekFilter(); els.feedList.innerHTML=publicFeed.map(f=>{ const submitted=submissionDateValue(f)||new Date(); const stage=Number(f.characterStage)||1; const pseudoCount=GROWTH_STAGES[Math.max(0,Math.min(GROWTH_STAGES.length-1,stage-1))].minCompleted;
+      return `<article class="feed-card"><img class="feed-img" src="${safeText(f.photoURL||'')}" alt="익명 학습 인증"><div class="feed-body"><div class="feed-top"><div style="display:flex;align-items:center;gap:8px">${characterMarkup(f.characterType||'rabbit',pseudoCount,'small')}<div class="anon">${safeText(f.anonymousName||'익명 도전자')}</div></div><span class="tag blue">${Number(f.week)}주차</span></div>${f.punctualBadge?'<div style="margin-top:8px"><span class="tag yellow">⏰ 정시 실천 배지</span></div>':''}<div class="feed-reflection">${safeText(f.reflection||'')}</div><div class="feed-date">${formatDateTime(submitted)}</div></div></article>`;
+    }).join('')||`<div class="panel body-sm muted">${selectedFeedWeek?selectedFeedWeek+'주차에 등록된 인증이 아직 없습니다.':'아직 등록된 인증이 없습니다.'}</div>`;
+  }
+
+  function openSubmission(week){
+    const st=getWeekState(Number(week)); if(st.status==='done')return toast('이미 완료한 주차입니다.'); if(!isPrototypeTesting()&&st.status==='expired')return toast('이미 마감된 주차라 인증할 수 없습니다.','error'); if(!isPrototypeTesting()&&st.status==='future')return toast('아직 인증 기간이 시작되지 않았습니다.','error');
+    activeSubmissionWeek=week; capturedBlob=null; capturedDataUrl=''; els.submitWeekLabel.textContent=`WEEK ${week}`; els.submitGoalText.textContent=profile.goalText; els.reflectionText.value=''; els.reflectionCount.textContent='0'; if(els.prototypePunctualCheck)els.prototypePunctualCheck.checked=false; if(els.prototypePunctualBox)els.prototypePunctualBox.classList.toggle('hidden',!isPrototypeTesting()); resetCameraUI(); els.submissionModal.classList.remove('hidden');
+  }
+
+  async function startCamera(){
+    try{
+      stopCamera();
+      if(!navigator.mediaDevices?.getUserMedia) throw new Error('이 브라우저에서는 카메라 API를 사용할 수 없습니다.');
+      cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:1600}},audio:false});
+      els.cameraVideo.srcObject=cameraStream; els.cameraVideo.classList.remove('hidden'); els.cameraPlaceholder.classList.add('hidden'); els.capturedPreview.classList.add('hidden'); els.cameraCaptureBtn.disabled=false; els.cameraStartBtn.textContent='카메라 다시 켜기';
+    }catch(err){console.error(err);toast('카메라 사용 권한을 허용해주세요. iPhone은 Safari 설정에서도 카메라 권한이 필요할 수 있습니다.','error');}
+  }
+
+  function stopCamera(){ if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;} els.cameraVideo.srcObject=null; }
+  function resetCameraUI(){stopCamera();els.cameraVideo.classList.add('hidden');els.capturedPreview.classList.add('hidden');els.cameraPlaceholder.classList.remove('hidden');els.cameraCaptureBtn.disabled=true;els.cameraRetakeBtn.classList.add('hidden');els.cameraStartBtn.classList.remove('hidden');els.cameraStartBtn.textContent='실시간 카메라';if(els.prototypePhotoBtn)els.prototypePhotoBtn.classList.toggle('hidden',!isPrototypeTesting());}
+
+  async function capturePhoto(){
+    if(!cameraStream || !els.cameraVideo.videoWidth) return toast('카메라가 준비될 때까지 잠시 후 다시 촬영해주세요.');
+    const vw=els.cameraVideo.videoWidth,vh=els.cameraVideo.videoHeight,maxW=1280,scale=Math.min(1,maxW/vw),canvas=document.createElement('canvas');canvas.width=Math.round(vw*scale);canvas.height=Math.round(vh*scale);const ctx=canvas.getContext('2d');ctx.drawImage(els.cameraVideo,0,0,canvas.width,canvas.height);addTimestamp(ctx,canvas);capturedBlob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.84));capturedDataUrl=canvas.toDataURL('image/jpeg',.82);showCapturedPreview();
+  }
+  function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.roundRect?ctx.roundRect(x,y,w,h,r):(ctx.rect(x,y,w,h));}
+
+  async function stampImageSource(src){
+    const img=await new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src=src;});
+    const maxW=1280, scale=Math.min(1,maxW/img.naturalWidth), canvas=document.createElement('canvas'); canvas.width=Math.max(1,Math.round(img.naturalWidth*scale)); canvas.height=Math.max(1,Math.round(img.naturalHeight*scale)); const ctx=canvas.getContext('2d'); ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    addTimestamp(ctx,canvas); capturedBlob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.84)); capturedDataUrl=canvas.toDataURL('image/jpeg',.82); showCapturedPreview();
+  }
+  function addTimestamp(ctx,canvas){const stamp=formatDateTime(now()); const fontSize=Math.max(18,Math.round(canvas.width*.025)); ctx.font=`700 ${fontSize}px sans-serif`; const padX=Math.round(fontSize*.65),padY=Math.round(fontSize*.52),metrics=ctx.measureText(stamp),boxW=metrics.width+padX*2,boxH=fontSize+padY*2,x=Math.max(8,canvas.width-boxW-18),y=Math.max(8,canvas.height-boxH-18);ctx.fillStyle='rgba(0,0,0,.66)';roundRect(ctx,x,y,boxW,boxH,Math.round(fontSize*.4));ctx.fill();ctx.fillStyle='#fff';ctx.textBaseline='middle';ctx.fillText(stamp,x+padX,y+boxH/2+1);}
+  function showCapturedPreview(){els.capturedPreview.src=capturedDataUrl;els.capturedPreview.classList.remove('hidden');els.cameraVideo.classList.add('hidden');els.cameraPlaceholder.classList.add('hidden');els.cameraStartBtn.classList.add('hidden');els.cameraCaptureBtn.disabled=true;els.cameraRetakeBtn.classList.remove('hidden');stopCamera();toast('날짜·시간이 포함된 인증샷이 준비되었습니다.','success');}
+  async function handleCameraFile(file){if(!file)return; if(!file.type.startsWith('image/'))return toast('이미지 파일만 사용할 수 있습니다.','error'); const reader=new FileReader(); const src=await new Promise((resolve,reject)=>{reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);}); try{await stampImageSource(src);}catch(e){console.error(e);toast('사진을 처리하지 못했습니다. 다시 촬영해주세요.','error');}}
+  async function makePrototypePhoto(){
+    const canvas=document.createElement('canvas');canvas.width=900;canvas.height=1200;const ctx=canvas.getContext('2d');const g=ctx.createLinearGradient(0,0,900,1200);g.addColorStop(0,'#11182a');g.addColorStop(1,'#202b47');ctx.fillStyle=g;ctx.fillRect(0,0,900,1200);ctx.fillStyle='#00e7ff';ctx.font='800 52px sans-serif';ctx.fillText('15-WEEK CHALLENGE',60,110);ctx.fillStyle='#ffffff';ctx.font='700 38px sans-serif';ctx.fillText(`${activeSubmissionWeek||getActiveWeek()}주차 테스트 인증샷`,60,190);ctx.fillStyle='#aeb9d0';ctx.font='500 28px sans-serif';ctx.fillText('실제 제출에서는 휴대폰 카메라 사진이 사용됩니다.',60,250);ctx.strokeStyle='rgba(0,231,255,.4)';ctx.lineWidth=5;ctx.strokeRect(60,330,780,560);ctx.fillStyle='rgba(255,255,255,.08)';ctx.fillRect(80,350,740,520);ctx.fillStyle='#dfe7fa';ctx.font='700 32px sans-serif';ctx.fillText('PROTOTYPE CAMERA TEST',205,625);addTimestamp(ctx,canvas);capturedBlob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.84));capturedDataUrl=canvas.toDataURL('image/jpeg',.82);showCapturedPreview();
+  }
+
+  async function submitWeek(){
+    const reflection=els.reflectionText.value.trim(); if(!capturedBlob) return toast('인증샷을 먼저 촬영해주세요.','error'); if(reflection.length<10) return toast('성찰 및 다짐을 10자 이상 작성해주세요.','error'); if(!activeSubmissionWeek) return; const weekState=getWeekState(Number(activeSubmissionWeek)); if(!isPrototypeTesting()&&weekState.status==='expired')return toast('제출 도중 인증 기간이 종료되었습니다. 이 주차는 더 이상 제출할 수 없습니다.','error'); if(!isPrototypeTesting()&&weekState.status==='future')return toast('아직 해당 주차의 인증 기간이 아닙니다.','error');
+    els.submitFinalBtn.disabled=true; els.submitFinalBtn.textContent='제출 중...';
+    try{
+      const submitDate=now(); const anon=profile.anonymousName||makeAnon(currentUser.uid); let photoURL=capturedDataUrl; let privateId=`demo_${Date.now()}`; const history=getGoalHistory(profile); const currentGoalVersion=Number(profile.goalVersion||history[history.length-1]?.version||1); const win=getScheduledWindow(activeSubmissionWeek,Number(profile.weekday),profile.startTime,Number(profile.duration)); const protoPunctual=!!(isPrototypeTesting()&&els.prototypePunctualCheck?.checked); const punctual=protoPunctual || (submitDate>=win.start&&submitDate<=win.end);
+      const privateData={ownerUid:currentUser.uid,week:activeSubmissionWeek,goalText:profile.goalText,goalVersion:currentGoalVersion,goalWeekday:Number(profile.weekday),goalStartTime:profile.startTime,goalDuration:Number(profile.duration),reflection,photoURL:'',scheduledDate:dateKey(win.start),scheduledWindowStart:win.start.toISOString(),scheduledWindowEnd:win.end.toISOString(),capturedAt:submitDate.toISOString(),submittedAt:submitDate.toISOString(),status:isPrototypeTesting()?'test':'submitted',prototypePunctual:protoPunctual,punctualBadge:punctual};
+      if(demoMode){privateData.photoURL=photoURL; const store=demoStore(); store.submissions=(store.submissions||[]).filter(s=>Number(s.week)!==activeSubmissionWeek); store.submissions.push({id:privateId,...privateData}); saveDemoStore(store);}
+      else{ const storageRef=fb.ref(fb.storage,`submissions/${currentUser.uid}/week_${activeSubmissionWeek}/${Date.now()}.jpg`); await fb.uploadBytes(storageRef,capturedBlob,{contentType:'image/jpeg'}); photoURL=await fb.getDownloadURL(storageRef); privateData.photoURL=photoURL; privateData.submittedAt=fb.serverTimestamp(); privateId=`${currentUser.uid}_w${activeSubmissionWeek}`; await fb.setDoc(fb.doc(fb.db,'submissions',privateId),privateData,{merge:true}); const completedAfter=Math.max(submissions.length+1,1); const growthAtSubmit=getGrowthState(completedAfter); const publicId=`pub_${privateId}`; await fb.setDoc(fb.doc(fb.db,'publicSubmissions',publicId),{ownerUid:currentUser.uid,week:activeSubmissionWeek,anonymousName:anon,reflection,photoURL,submittedAt:fb.serverTimestamp(),capturedAt:submitDate.toISOString(),punctualBadge:punctual,characterType:profile.characterType||'rabbit',characterStage:growthAtSubmit.stage},{merge:true}); }
+      await loadSubmissions(); await Promise.all([loadPublicFeed(),loadHomeRecentFeed()]); els.submissionModal.classList.add('hidden'); resetCameraUI(); await renderAll(); const badgeWon=isPunctualSubmission(submissions.find(s=>Number(s.week)===Number(activeSubmissionWeek)),profile); toast(`${activeSubmissionWeek}주차 챌린지 완료! +100 XP${badgeWon?' · ⏰ 정시 배지 획득!':''}`,'success');
+    }catch(err){console.error(err);toast('제출 중 오류가 발생했습니다. 네트워크와 저장소 설정을 확인해주세요.','error');}
+    finally{els.submitFinalBtn.disabled=false;els.submitFinalBtn.textContent='인증 제출하고 주차 완료';}
+  }
+
+  function openDetail(sub){
+    els.detailWeekLabel.textContent=`WEEK ${Number(sub.week)}`; els.detailGoal.textContent=sub.goalText||profile.goalText; const snap={weekday:sub.goalWeekday??profile.weekday,startTime:sub.goalStartTime||profile.startTime,duration:sub.goalDuration||profile.duration}; const win=getScheduledWindow(Number(sub.week),Number(snap.weekday),snap.startTime,Number(snap.duration));
+    els.detailGoalSchedule.textContent=`제출 당시 설정 · ${formatGoalSchedule(snap)} · 배지 시간 ${pad(win.start.getHours())}:${pad(win.start.getMinutes())}~${pad(win.end.getHours())}:${pad(win.end.getMinutes())}${sub.goalVersion?` · 목표 v${Number(sub.goalVersion)}`:''}`; const badge=isPunctualSubmission(sub,snap); els.detailBadge.innerHTML=badge?'<span class="tag yellow">⏰ 정해진 시간 실천 배지 획득</span>':'<span class="tag">주차 내 정상 완료 · 정시 배지 없음</span>';
+    els.detailPhoto.src=sub.photoURL||''; els.detailReflection.textContent=sub.reflection||''; const d=submissionDateValue(sub)||new Date(); els.detailMeta.textContent=`제출 ${formatDateTime(d)} · ${sub.status==='test'?'프로토타입 테스트 제출':'주차 내 제출'}`; els.detailModal.classList.remove('hidden');
+  }
+
+  function openGoalHistory(){
+    const history=getGoalHistory(profile); els.goalHistoryList.innerHTML=goalHistoryHtml(history); els.goalHistoryModal.classList.remove('hidden');
+  }
+
+  async function loadAdminDashboard(){
+    if(!isInstructor()) return;
+    const week=Number(els.adminWeekSelect.value||getCurrentProgramWeek());
+    els.adminWeekSelect.value=String(week);
+    const {start,end}=getWeekBounds(week);
+    els.adminWeekDate.textContent=`${formatDate(start)} 00:00 ~ ${formatDate(end)} 23:59 · 이 기간 안에는 어느 요일에 제출해도 정상 완료입니다.`;
+    if(demoMode){
+      const ds=demoStore();
+      const demoStudents=[
+        {uid:'demo-user-2026',...(ds.profile||{}),name:ds.profile?.name||'김한결',studentId:ds.profile?.studentId||'1234567',characterType:ds.profile?.characterType||'rabbit'},
+        {uid:'demo2',name:'이서준',studentId:'2345678',goalText:'매주 정해진 시간에 전공 노트를 60분 복습한다.',weekday:3,startTime:'19:00',duration:60,characterType:'fox',goalHistory:[]},
+        {uid:'demo3',name:'박지민',studentId:'3456789',goalText:'매주 영어 논문을 90분 읽고 표현 5개를 기록한다.',weekday:5,startTime:'16:00',duration:90,characterType:'otter',goalHistory:[]}
+      ];
+      const allDemoSubs=ds.submissions||[];
+      adminStudentsCache=demoStudents;
+      adminSubmissionsCache=allDemoSubs;
+      const weekSubs=allDemoSubs.filter(s=>Number(s.week)===week);
+      renderAdminRows(demoStudents,weekSubs,week,allDemoSubs);
+      return;
+    }
+    try{
+      const [usersQs,allSubsQs]=await Promise.all([
+        fb.getDocs(fb.query(fb.collection(fb.db,'users'),fb.where('role','==','student'))),
+        fb.getDocs(fb.collection(fb.db,'submissions'))
+      ]);
+      const students=usersQs.docs.map(d=>({uid:d.id,...d.data()}));
+      const allSubs=allSubsQs.docs.map(d=>({id:d.id,...d.data()}));
+      adminStudentsCache=students;
+      adminSubmissionsCache=allSubs;
+      const weekSubs=allSubs.filter(s=>Number(s.week)===week);
+      renderAdminRows(students,weekSubs,week,allSubs);
+    }catch(err){
+      console.error(err);
+      toast('교수자 현황을 불러오지 못했습니다. Firestore 보안규칙을 확인해주세요.','error');
+    }
+  }
+
+  function renderAdminRows(students,weekSubs,week,allSubs=weekSubs){
+    const byUid=new Map(weekSubs.map(s=>[s.ownerUid,s]));
+    els.adminTotal.textContent=students.length;
+    els.adminSubmitted.textContent=weekSubs.length;
+    els.adminMissing.textContent=Math.max(0,students.length-weekSubs.length);
+    els.adminPunctual.textContent=weekSubs.filter(s=>{const st=students.find(x=>x.uid===s.ownerUid);return isPunctualSubmission(s,st);}).length;
+    const rows=[...students].sort((a,b)=>(a.name||'').localeCompare(b.name||'','ko')).map(st=>{
+      const userSubs=allSubs.filter(x=>x.ownerUid===st.uid);
+      const s=byUid.get(st.uid);
+      const punctualTotal=userSubs.filter(x=>isPunctualSubmission(x,st)).length;
+      const growth=getGrowthState(userSubs.length);
+      const badgeThisWeek=s&&isPunctualSubmission(s,st);
+      const status=s?`<span class="tag green">제출${badgeThisWeek?' ⏰':''}</span>`:'<span class="tag pink">미제출</span>';
+      const detail=s?`<div class="student-sub-detail"><img src="${safeText(s.photoURL||'')}" alt="인증샷"><div><p>${safeText(s.reflection||'')}</p><div class="helper">제출 당시 목표 v${Number(s.goalVersion||1)} · ${safeText(s.goalText||'목표 기록 없음')}</div><div class="helper">${safeText(s.capturedAt?formatDateTime(new Date(s.capturedAt)):'')} ${badgeThisWeek?'· ⏰ 정시 배지 획득':''}</div></div></div>`:'';
+      const history=getGoalHistory(st);
+      const goalBox=st.goalText?`<div class="admin-goal-box"><div class="small muted">현재 행동 목표</div><div class="admin-goal-text">${safeText(st.goalText)}</div><div class="helper">${safeText(formatGoalSchedule(st))}</div><details class="goal-history-details"><summary>목표 버전 ${history.length||1}개 · 수정 ${Math.max(0,(history.length||1)-1)}회 보기</summary><div class="admin-history-list">${goalHistoryHtml(history,{compact:true})}</div></details></div>`:'';
+      return `<div class="student-row"><div class="student-row-top"><div class="student-identity">${characterMarkup(st.characterType||'rabbit',userSubs.length,'small')}<div><button type="button" class="student-name-btn" data-student-uid="${safeText(st.uid)}" aria-label="${safeText(st.name||'학생')}의 전체 챌린지 기록 보기">${safeText(st.name||'이름 미입력')}</button><div class="student-id">${safeText(st.studentId||'학번 미입력')} · 이름을 누르면 전체 기록 보기</div></div></div><div class="student-progress"><span class="tag blue">Lv.${growth.stage}</span><span class="tag yellow">⏰ 총 ${punctualTotal}</span>${status}</div></div>${goalBox}${detail}</div>`;
+    }).join('');
+    els.studentTable.innerHTML=rows||'<div class="panel body-sm muted">등록된 학생이 없습니다.</div>';
+    els.studentTable.querySelectorAll('[data-student-uid]').forEach(btn=>btn.onclick=()=>openStudentHistory(btn.dataset.studentUid));
+  }
+
+  function openStudentHistory(uid){
+    if(!isInstructor()) return;
+    const st=adminStudentsCache.find(x=>String(x.uid)===String(uid));
+    if(!st) return toast('학생 정보를 찾지 못했습니다. 현황판을 새로고침해주세요.','error');
+    const userSubs=adminSubmissionsCache.filter(x=>String(x.ownerUid)===String(uid)).sort((a,b)=>Number(b.week)-Number(a.week));
+    const punctualTotal=userSubs.filter(x=>isPunctualSubmission(x,st)).length;
+    const growth=getGrowthState(userSubs.length);
+    els.studentHistoryName.textContent=`${st.name||'이름 미입력'}의 챌린지 기록`;
+    els.studentHistoryId.textContent=`학번 ${st.studentId||'-'} · 총 ${userSubs.length}/15주`;
+    els.studentHistorySummary.innerHTML=`<div class="student-history-stat"><b>${userSubs.length}</b><span>총 제출</span></div><div class="student-history-stat"><b style="color:var(--yellow)">${punctualTotal}</b><span>정시 제출</span></div><div class="student-history-stat"><b style="color:var(--blue)">Lv.${growth.stage}</b><span>${safeText(growth.name)}</span></div>`;
+    if(!userSubs.length){
+      els.studentHistoryList.innerHTML='<div class="panel body-sm muted">아직 제출한 챌린지 기록이 없습니다.</div>';
+    }else{
+      els.studentHistoryList.innerHTML=userSubs.map(sub=>{
+        const submitted=submissionDateValue(sub);
+        const badge=isPunctualSubmission(sub,st);
+        return `<article class="feed-card"><img class="feed-img" src="${safeText(sub.photoURL||'')}" alt="${Number(sub.week)}주차 인증샷"><div class="feed-body"><div class="feed-top"><div class="anon">${Number(sub.week)}주차 챌린지</div><span class="tag ${badge?'yellow':'green'}">${badge?'⏰ 정시 제출':'✓ 제출 완료'}</span></div><div class="student-history-goal"><b>제출 당시 목표 v${Number(sub.goalVersion||1)}</b><br>${safeText(sub.goalText||'목표 기록 없음')}</div><div class="feed-reflection">${safeText(sub.reflection||'')}</div><div class="feed-date">${submitted?formatDateTime(submitted):'제출 시각 기록 없음'} · ${safeText(sub.goalWeekday!==undefined?formatGoalSchedule({weekday:sub.goalWeekday,startTime:sub.goalStartTime,duration:sub.goalDuration}):'')}</div></div></article>`;
+      }).join('');
+    }
+    els.studentHistoryModal.classList.remove('hidden');
+  }
+
+  function ensureXlsxLibrary(){
+    if(window.XLSX) return Promise.resolve(window.XLSX);
+    if(window.__xlsxLoadingPromise) return window.__xlsxLoadingPromise;
+    window.__xlsxLoadingPromise=new Promise((resolve,reject)=>{
+      const script=document.createElement('script');
+      script.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      script.async=true;
+      script.onload=()=>window.XLSX?resolve(window.XLSX):reject(new Error('XLSX object missing after load'));
+      script.onerror=()=>reject(new Error('XLSX library load failed'));
+      document.head.appendChild(script);
+    });
+    return window.__xlsxLoadingPromise;
+  }
+
+  function downloadCsvFallback(rows,filename){
+    const esc=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+    const csv='\uFEFF'+rows.map(row=>row.map(esc).join(',')).join('\r\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename.replace(/\.xlsx$/i,'.csv'); document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+  }
+
+  async function exportAdminExcel(){
+    if(!isInstructor()) return toast('교수자만 사용할 수 있는 기능입니다.','error');
+    if(!adminStudentsCache.length){ await loadAdminDashboard(); }
+    const students=[...adminStudentsCache].sort((a,b)=>(a.studentId||'').localeCompare(b.studentId||'')||(a.name||'').localeCompare(b.name||'','ko'));
+    const headers=['이름','학번',...Array.from({length:TOTAL_WEEKS},(_,i)=>`${i+1}주차`),'총 제출 수','정시 제출 수'];
+    const data=students.map(st=>{
+      const subs=adminSubmissionsCache.filter(s=>String(s.ownerUid)===String(st.uid));
+      const weekSet=new Set(subs.map(s=>Number(s.week)).filter(w=>w>=1&&w<=TOTAL_WEEKS));
+      const punctualWeeks=new Set(subs.filter(s=>isPunctualSubmission(s,st)).map(s=>Number(s.week)).filter(w=>w>=1&&w<=TOTAL_WEEKS));
+      return [st.name||'',st.studentId||'',...Array.from({length:TOTAL_WEEKS},(_,i)=>weekSet.has(i+1)?1:0),weekSet.size,punctualWeeks.size];
+    });
+    const rows=[headers,...data];
+    const stamp=new Date();
+    const filename=`15주_학습챌린지_제출현황_${stamp.getFullYear()}${pad(stamp.getMonth()+1)}${pad(stamp.getDate())}.xlsx`;
+    try{
+      await ensureXlsxLibrary();
+      if(!window.XLSX) throw new Error('XLSX library unavailable');
+      const ws=XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols']=[{wch:12},{wch:10},...Array.from({length:TOTAL_WEEKS},()=>({wch:7})),{wch:11},{wch:12}];
+      const wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,ws,'제출현황');
+      XLSX.writeFile(wb,filename,{compression:true});
+      toast(`엑셀 다운로드를 시작했습니다. 학생 ${students.length}명의 기록이 포함됩니다.`,'success');
+    }catch(err){
+      console.warn('Excel export fallback:',err);
+      downloadCsvFallback(rows,filename);
+      toast('엑셀 라이브러리를 불러오지 못해 Excel에서 열 수 있는 CSV로 다운로드했습니다.','info');
+    }
+  }
+
+  function resetDemoData(){ localStorage.removeItem('quest15_demo_store'); profile=null; submissions=[]; publicFeed=[];homeRecentFeed=[];selectedCharacter=null; const status=$('demo-click-status'); if(status)status.textContent='체험 기록이 초기화되었습니다. 학생 화면 체험을 누르면 처음부터 시작합니다.'; toast('체험 기록을 초기화했습니다.','success'); }
+
+  // AUTH EVENTS
+  if(els.demoResetBtn) els.demoResetBtn.onclick=resetDemoData;
+  els.authSwitchBtn.onclick=()=>{authMode=authMode==='login'?'signup':'login';els.emailAuthBtn.textContent=authMode==='login'?'로그인':'회원가입';els.authSwitchCopy.textContent=authMode==='login'?'계정이 없나요?':'이미 계정이 있나요?';els.authSwitchBtn.textContent=authMode==='login'?'회원가입':'로그인';};
+  els.emailAuthBtn.onclick=async()=>{ if(!firebaseReady) return toast('Firebase를 연결하거나 프로토타입 체험을 이용해주세요.','error'); const email=els.authEmail.value.trim(),pw=els.authPassword.value; if(!email||pw.length<6)return toast('이메일과 6자 이상의 비밀번호를 입력해주세요.','error'); try{ if(authMode==='signup') await fb.createUserWithEmailAndPassword(fb.auth,email,pw); else await fb.signInWithEmailAndPassword(fb.auth,email,pw);}catch(e){console.error(e);toast('로그인에 실패했습니다. 이메일/비밀번호를 확인해주세요.','error');} };
+  els.googleLoginBtn.onclick=async()=>{ if(!firebaseReady) return toast('Firebase를 연결하거나 프로토타입 체험을 이용해주세요.','error'); try{const provider=new fb.GoogleAuthProvider();await fb.signInWithPopup(fb.auth,provider);}catch(e){console.error(e);try{await fb.signInWithRedirect(fb.auth,new fb.GoogleAuthProvider());}catch(e2){toast('Google 로그인에 실패했습니다.','error');}} };
+  window.startStudentDemo = async function(){
+    const status=$('demo-click-status'); if(status) status.textContent='학생 체험 화면을 여는 중…';
+    try{
+      demoMode=true; demoRole='student'; currentUser={uid:'demo-user-2026',email:'demo@student.example',displayName:'체험 학생'}; profile=null; submissions=[]; publicFeed=[];
+      await afterLogin();
+      if(status) status.textContent='학생 체험 모드가 시작되었습니다.';
+    }catch(e){ console.error(e); if(status) status.textContent='오류가 발생했습니다: '+(e?.message||e); toast('학생 체험 화면을 여는 중 오류가 발생했습니다.','error'); }
+  };
+  window.startInstructorDemo = async function(){
+    const status=$('demo-click-status'); if(status) status.textContent='교수자 체험 화면을 여는 중…';
+    try{
+      demoMode=true; demoRole='instructor'; currentUser={uid:'demo-instructor-2026',email:'professor@demo.local',displayName:'교수자'}; profile=null; submissions=[]; publicFeed=[];
+      await afterLogin();
+      if(status) status.textContent='교수자 체험 모드가 시작되었습니다.';
+    }catch(e){ console.error(e); if(status) status.textContent='오류가 발생했습니다: '+(e?.message||e); toast('교수자 체험 화면을 여는 중 오류가 발생했습니다.','error'); }
+  };
+
+  // ONBOARDING EVENTS
+  els.profileStudentId.oninput=()=>{els.profileStudentId.value=els.profileStudentId.value.replace(/\D/g,'').slice(0,7);};
+  els.profileNextBtn.onclick=()=>{const name=els.profileName.value.trim(),sid=els.profileStudentId.value.trim(); if(name.length<2)return toast('이름을 정확히 입력해주세요.','error'); if(!/^\d{7}$/.test(sid))return toast('학번은 반드시 7자리 숫자로 입력해주세요.','error'); if(!selectedCharacter||!CHARACTER_TYPES[selectedCharacter])return toast('15주 동안 함께할 캐릭터를 하나 선택해주세요.','error'); showOnboardingStep(2);};
+  els.goalBackBtn.onclick=()=>showOnboardingStep(1);
+  els.goalSaveBtn.onclick=async()=>{
+    const name=els.profileName.value.trim(),studentId=els.profileStudentId.value.trim(),goalText=els.goalText.value.trim(),startTime=els.startTime.value,duration=Number(els.duration.value);
+    if(!/^\d{7}$/.test(studentId))return toast('학번은 반드시 7자리 숫자여야 합니다.','error'); if(!selectedCharacter||!CHARACTER_TYPES[selectedCharacter])return toast('성장 캐릭터를 하나 선택해주세요.','error'); if(goalText.length<10)return toast('행동 목표를 조금 더 구체적으로 작성해주세요.','error'); if(selectedWeekday===null)return toast('매주 실천할 요일을 하나 선택해주세요.','error'); if(!DURATION_OPTIONS.includes(duration)||duration>120)return toast('실천 시간은 최대 2시간까지 선택할 수 있습니다.','error');
+    const nextSettings={goalText,weekday:selectedWeekday,startTime,duration}; const hadGoal=goalIsConfigured(profile); const changed=hadGoal&&goalSettingsChanged(profile,nextSettings); const stamp=new Date().toISOString(); let history=getGoalHistory(profile);
+    if(!hadGoal){ history=[goalSnapshot(nextSettings,1,stamp,'initial')]; }
+    else if(changed){ const nextVersion=Math.max(0,...history.map(h=>Number(h.version)||0))+1; history=[...history,goalSnapshot(nextSettings,nextVersion,stamp,'edit')]; }
+    const goalVersion=Number(history[history.length-1]?.version||profile?.goalVersion||1); const role=APP_CONFIG.instructorEmails.map(x=>x.toLowerCase()).includes((currentUser.email||'').toLowerCase())?'instructor':'student';
+    await saveProfile({name,studentId,characterType:selectedCharacter,...nextSettings,goalVersion,goalHistory:history,goalCreatedAt:profile?.goalCreatedAt||stamp,anonymousName:profile?.anonymousName||makeAnon(currentUser.uid),role,email:currentUser.email||'',updatedAt:stamp});
+    await loadSubmissions(); showScreen('main'); await renderAll(); setTab('home'); editingGoal=false;
+    if(hadGoal&&!changed) toast('변경된 내용이 없어 기존 목표를 그대로 유지했습니다.','info'); else if(changed) toast(`목표가 v${goalVersion}로 수정되었습니다. 이전 목표도 이력에 보존됩니다.`,'success'); else toast('15주 챌린지가 설정되었습니다!','success');
+  };
+
+  // APP EVENTS
+  document.querySelectorAll('.nav-btn').forEach(b=>b.onclick=()=>setTab(b.dataset.tab)); document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>setTab(b.dataset.goto));
+  els.homeSubmitBtn.onclick=()=>openSubmission(getActiveWeek()); els.cameraStartBtn.onclick=startCamera; els.cameraCaptureBtn.onclick=capturePhoto; els.cameraFileBtn.onclick=()=>els.cameraFileInput.click(); els.cameraFileInput.onchange=()=>{const f=els.cameraFileInput.files?.[0];handleCameraFile(f);els.cameraFileInput.value='';}; els.prototypePhotoBtn.onclick=makePrototypePhoto; els.cameraRetakeBtn.onclick=()=>{capturedBlob=null;capturedDataUrl='';resetCameraUI();}; els.reflectionText.oninput=()=>els.reflectionCount.textContent=els.reflectionText.value.length; els.submitFinalBtn.onclick=submitWeek;
+  document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{const id=b.dataset.close;$(id).classList.add('hidden');if(id==='submission-modal')resetCameraUI();});
+  els.editGoalBtn.onclick=()=>{editingGoal=true;showScreen('onboarding');showOnboardingStep(2);prefillOnboarding();};
+  els.goalHistoryBtn.onclick=openGoalHistory;
+  async function doLogout(){stopCamera(); adminStudentsCache=[];adminSubmissionsCache=[]; if(els.studentTable)els.studentTable.innerHTML=''; if(els.adminTotal)els.adminTotal.textContent='0'; if(els.adminSubmitted)els.adminSubmitted.textContent='0'; if(els.adminMissing)els.adminMissing.textContent='0'; if(els.adminPunctual)els.adminPunctual.textContent='0'; if(demoMode){demoMode=false;demoRole='student';currentUser=null;profile=null;submissions=[];publicFeed=[];showScreen('auth');return;} if(firebaseReady) await fb.signOut(fb.auth);}
+  els.logoutBtn.onclick=doLogout; $('onboarding-logout').onclick=doLogout; els.adminWeekSelect.onchange=loadAdminDashboard; els.adminRefreshBtn.onclick=loadAdminDashboard; els.adminExportBtn.onclick=exportAdminExcel;
+  if(els.testWeekSelect) els.testWeekSelect.onchange=()=>{prototypeWeek=Number(els.testWeekSelect.value||1);renderHome();renderWeeks();toast(`${prototypeWeek}주차 테스트 화면으로 이동했습니다.`,'info');};
+
+  // Close modal by tapping backdrop
+  [els.submissionModal,els.detailModal,els.goalHistoryModal,els.studentHistoryModal].forEach(m=>m.addEventListener('click',e=>{if(e.target===m){m.classList.add('hidden');if(m===els.submissionModal)resetCameraUI();}}));
+  window.addEventListener('pagehide',stopCamera);
+
+  populateSelectors(); els.startTime.value='19:00'; els.duration.value='60'; els.adminWeekSelect.value=String(getCurrentProgramWeek()); if(els.testWeekSelect) els.testWeekSelect.value=String(prototypeWeek); initFirebase();
+</script>
+
+<script>
+  // PWA service worker: hosted HTTPS environment only.
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(err => console.warn('Service worker registration failed:', err));
+    });
+  }
+</script>
+</body>
+</html>
