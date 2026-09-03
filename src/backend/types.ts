@@ -1,0 +1,60 @@
+import type { CharacterType, FeedPost, GoalSettings, GoalVersion, Submission, UserProfile } from '../types';
+
+export interface AuthUser {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+}
+
+export interface OnboardingInput {
+  name: string;
+  studentId: string;
+  characterType: CharacterType;
+  goal: GoalSettings;
+}
+
+export interface SubmitWeekInput {
+  week: number;
+  photoBlob: Blob;
+  reflection: string;
+  /** Prototype-mode only: lets the tester force the punctual badge for UI testing. Ignored by the Firebase backend in production. */
+  prototypePunctualOverride?: boolean;
+}
+
+/**
+ * Data-access boundary between the UI and whatever actually stores the data.
+ * `FirebaseBackend` is the real, authoritative implementation (Auth +
+ * Firestore + Storage). `LocalBackend` is an IndexedDB-backed stand-in used
+ * only in prototype/demo mode so the app can be fully click-tested before a
+ * real Firebase project exists — it is never used in production and never
+ * shares storage with the real backend.
+ */
+export interface Backend {
+  readonly kind: 'firebase' | 'local';
+
+  onAuthChange(cb: (user: AuthUser | null) => void): () => void;
+  signInGoogle(): Promise<void>;
+  signInEmail(email: string, password: string): Promise<void>;
+  signUpEmail(email: string, password: string): Promise<void>;
+  signOutUser(): Promise<void>;
+  /** Prototype-mode only (LocalBackend). Not implemented by FirebaseBackend. */
+  signInDemo?(role: 'student' | 'instructor'): Promise<void>;
+  resetDemoData?(): Promise<void>;
+
+  getProfile(uid: string): Promise<UserProfile | null>;
+  completeOnboarding(uid: string, email: string, input: OnboardingInput): Promise<UserProfile>;
+  updateGoal(uid: string, next: GoalSettings): Promise<UserProfile>;
+  getGoalHistory(uid: string): Promise<GoalVersion[]>;
+
+  isInstructor(email: string | null): Promise<boolean>;
+  ensureInstructorProfile(uid: string, email: string, displayName: string | null): Promise<UserProfile>;
+
+  getMySubmissions(uid: string): Promise<Submission[]>;
+  submitWeek(uid: string, profile: UserProfile, input: SubmitWeekInput): Promise<Submission>;
+
+  listFeed(weekFilter: number): Promise<FeedPost[]>;
+
+  adminListStudents(): Promise<UserProfile[]>;
+  adminListAllSubmissions(): Promise<Submission[]>;
+  adminGetGoalHistory(uid: string): Promise<GoalVersion[]>;
+}

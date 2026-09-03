@@ -1,0 +1,178 @@
+rules_version = '2';
+
+// ---------------------------------------------------------------------------
+// 15-week learning challenge — Firestore security rules.
+//
+// Authorization model:
+//   - A student can only ever read/write their OWN users/{uid} doc,
+//     goalVersions subcollection, and submissions.
+//   - "Instructor" is never trusted from a client-writable field. It is
+//     decided here, server-side, by checking whether the caller's verified
+//     auth token email has a document in `instructorAllowlist`. That
+//     collection is NOT writable by any client role defined below — the
+//     course owner adds/removes instructors by hand in the Firebase
+//     Console. This is the whole point: a student editing devtools/network
+//     requests cannot grant themselves the instructor role.
+//   - Anonymous feed posts (`feedPosts`) intentionally carry no uid/email/
+//     name/studentId field at all, and are validated to only ever be
+//     created alongside a real private submission the same student already
+//     owns — see isLinkedToOwnSubmission().
+//
+// Program calendar: PROGRAM_START below MUST match src/constants.ts
+// (PROGRAM_START = 2026-09-07T00:00:00+09:00, i.e. 2026-09-06T15:00:00Z).
+// If you reuse this app for a different semester, update BOTH this file,
+// storage.rules, and src/constants.ts together.
+// ---------------------------------------------------------------------------
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function callerEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function isInstructor() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/instructorAllowlist/$(callerEmail()));
+    }
+
+    // 2026-09-06T15:00:00Z == 2026-09-07T00:00:00+09:00 (Monday, week 1, KST)
+    function programStart() {
+      return timestamp.date(2026, 9, 6) + duration.value(15, 'h');
+    }
+
+    function weekStart(week) {
+      return programStart() + duration.value((week - 1) * 7 * 24, 'h');
+    }
+
+    // Exclusive upper bound = next Monday 00:00 KST (i.e. through Sunday 23:59:59.999 KST)
+    function weekEnd(week) {
+      return weekStart(week) + duration.value(7 * 24, 'h');
+    }
+
+    function isValidWeekNumber(week) {
+      return week is int && week >= 1 && week <= 15;
+    }
+
+    function isWithinWeekWindow(week) {
+      return isValidWeekNumber(week)
+        && request.time >= weekStart(week)
+        && request.time < weekEnd(week);
+    }
+
+    function isValidGoalFields(d) {
+      return d.goalText is string && d.goalText.size() >= 10 && d.goalText.size() <= 180
+        && d.weekday is int && d.weekday >= 0 && d.weekday <= 6
+        && d.startTime is string && d.startTime.matches('^[0-2][0-9]:[0-5][0-9]$')
+        && d.duration is int && d.duration > 0 && d.duration <= 120;
+    }
+
+    // ------------------------------------------------------------------
+    // config / instructorAllowlist — server-controlled instructor role.
+    // No client write path exists for either collection on purpose.
+    // ------------------------------------------------------------------
+    match /instructorAllowlist/{email} {
+      // A signed-in user may only check membership for THEIR OWN email
+      // (so students can't enumerate the instructor list), the admin
+      // dashboard's isInstructor() check still works via exists() above
+      // regardless of this read rule.
+      allow get: if isSignedIn() && callerEmail() == email;
+      allow list: if false;
+      allow write: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // users/{uid}
+    // ------------------------------------------------------------------
+    match /users/{uid} {
+      allow get: if isSignedIn() && (request.auth.uid == uid || isInstructor());
+      allow list: if isSignedIn() && isInstructor();
+
+      allow create: if isSignedIn() && request.auth.uid == uid
+        && request.resource.data.name is string && request.resource.data.name.size() >= 2
+        && request.resource.data.studentId is string && request.resource.data.studentId.matches('^[0-9]{7}$')
+        && request.resource.data.characterType in ['rabbit', 'fox', 'otter', 'panda']
+        && request.resource.data.currentGoalVersion == 1
+        && isValidGoalFields(request.resource.data)
+        && (
+          (request.resource.data.role == 'student')
+          || (request.resource.data.role == 'instructor' && isInstructor())
+        );
+
+      allow update: if isSignedIn() && request.auth.uid == uid
+        && request.resource.data.characterType == resource.data.characterType // permanent, per character-account binding rule
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.studentId is string && request.resource.data.studentId.matches('^[0-9]{7}$')
+        && request.resource.data.name is string && request.resource.data.name.size() >= 2
+        && isValidGoalFields(request.resource.data)
+        && request.resource.data.currentGoalVersion >= resource.data.currentGoalVersion
+        && request.resource.data.currentGoalVersion <= resource.data.currentGoalVersion + 1;
+
+      allow delete: if false;
+
+      match /goalVersions/{versionId} {
+        allow get: if isSignedIn() && (request.auth.uid == uid || isInstructor());
+        allow list: if isSignedIn() && (request.auth.uid == uid || isInstructor());
+
+        allow create: if isSignedIn() && request.auth.uid == uid
+          && isValidGoalFields(request.resource.data)
+          && request.resource.data.changedAt == request.time
+          && request.resource.data.changeType in ['initial', 'edit']
+          && request.resource.data.version is int
+          && versionId == string(request.resource.data.version)
+          && request.resource.data.version == get(/databases/$(database)/documents/users/$(uid)).data.currentGoalVersion + 1;
+
+        allow update, delete: if false;
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // submissions/{uid}_w{week} — private, immutable, one per student/week.
+    // ------------------------------------------------------------------
+    match /submissions/{subId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isInstructor());
+      allow list: if isSignedIn() && isInstructor(); // students query their own via where(userId==uid), never a bare list of everyone's
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && subId == request.auth.uid + '_w' + string(request.resource.data.week)
+        && !exists(/databases/$(database)/documents/submissions/$(subId))
+        && isWithinWeekWindow(request.resource.data.week)
+        && request.resource.data.reflection is string && request.resource.data.reflection.size() >= 10
+        && request.resource.data.photoURL is string && request.resource.data.photoURL.size() > 0
+        && request.resource.data.serverCreatedAt == request.time
+        && request.resource.data.goalSnapshot.version == request.resource.data.goalVersion
+        && isValidGoalFields(request.resource.data.goalSnapshot);
+
+      allow update, delete: if false; // audit trail: a submission, once recorded, cannot be altered by anyone
+    }
+
+    // ------------------------------------------------------------------
+    // feedPosts/{feedId} — fully anonymous, no uid/email/name/studentId.
+    // ------------------------------------------------------------------
+    match /feedPosts/{feedId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(
+             ['anonName', 'week', 'reflection', 'photoURL', 'characterType', 'characterStage', 'punctualClaim', 'createdAt']
+           )
+        && request.resource.data.anonName is string
+        && isValidWeekNumber(request.resource.data.week)
+        && request.resource.data.reflection is string
+        && request.resource.data.photoURL is string && request.resource.data.photoURL.size() > 0
+        && request.resource.data.createdAt == request.time
+        // Only allowed alongside a private submission this same student already owns for this week —
+        // ties the anonymous post to a real, already-validated submission without ever storing the uid.
+        && exists(/databases/$(database)/documents/submissions/$(request.auth.uid + '_w' + string(request.resource.data.week)))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.anonName == request.resource.data.anonName;
+
+      allow update, delete: if false;
+    }
+  }
+}
