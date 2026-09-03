@@ -17,20 +17,16 @@ export function renderWeeks() {
     const scheduledWin = getScheduledWindow(w, profile.weekday, profile.startTime, profile.duration);
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = `week-card ${w === current ? 'current' : ''} ${st.status === 'done' ? 'done' : ''}`;
-    card.style.width = '100%';
-    card.style.color = 'inherit';
-    card.style.textAlign = 'left';
-    card.style.cursor = 'pointer';
+    card.className = `week-row ${w === current ? 'current' : ''} ${st.status === 'done' ? 'done' : ''} ${st.status === 'expired' ? 'missed' : ''}`;
 
     let statusHtml = '';
     if (st.status === 'done') statusHtml = `<span class="tag green">완료 ${st.sub && isPunctualSubmission(st.sub) ? '⏰' : ''}</span>`;
     else if (st.status === 'test') statusHtml = '<span class="tag yellow">테스트</span>';
-    else if (st.status === 'open') statusHtml = '<span class="tag pink">인증 가능</span>';
+    else if (st.status === 'open') statusHtml = '<span class="tag accent">인증 가능</span>';
     else if (st.status === 'expired') statusHtml = '<span class="tag yellow">기간 종료</span>';
     else statusHtml = '<span class="tag">예정</span>';
 
-    card.innerHTML = `<div class="week-no">W${pad(w)}</div><div class="week-info"><strong>${formatDate(start)} ~ ${formatDate(end)}</strong><span>정시 배지 · ${WEEKDAY_NAMES[scheduledWin.start.getDay()]} ${profile.startTime}~${pad(scheduledWin.end.getHours())}:${pad(scheduledWin.end.getMinutes())}</span></div><div class="week-status">${statusHtml}</div>`;
+    card.innerHTML = `<div class="week-row-body"><div class="week-row-label"><strong>${w}주차 · ${formatDate(start)} ~ ${formatDate(end)}</strong><span>정시 배지 · ${WEEKDAY_NAMES[scheduledWin.start.getDay()]} ${profile.startTime}~${pad(scheduledWin.end.getHours())}:${pad(scheduledWin.end.getMinutes())}</span></div>${statusHtml}</div>`;
     card.onclick = () => {
       if (st.status === 'done' && st.sub) openDetail(st.sub);
       else if (st.status === 'test' || st.status === 'open') openSubmission(w);

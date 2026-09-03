@@ -57,6 +57,7 @@ export const els = {
   adminWeekSelect: $<HTMLSelectElement>('admin-week-select'), adminTotal: $('admin-total'), adminSubmitted: $('admin-submitted'),
   adminMissing: $('admin-missing'), adminPunctual: $('admin-punctual'), adminWeekDate: $('admin-week-date'),
   studentTable: $('student-table'), adminRefreshBtn: $('admin-refresh-btn'), adminExportBtn: $<HTMLButtonElement>('admin-export-btn'),
+  adminSearchInput: $<HTMLInputElement>('admin-search-input'), adminFilter: $('admin-filter'),
 
   historyModal: $('student-history-modal'), historyStudentName: $('history-student-name'),
   historySummary: $('history-summary'), historyGoalVersions: $('history-goal-versions'), historyWeeks: $('history-weeks'),

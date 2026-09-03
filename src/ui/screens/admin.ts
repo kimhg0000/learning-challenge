@@ -35,6 +35,9 @@ function goalHistoryHtml(history: GoalVersion[]): string {
 // "새로고침" click (or the very first load) re-fetches; switching weeks
 // just re-renders the already-loaded data.
 let dashboardCache: { students: UserProfile[]; allSubs: Submission[] } | null = null;
+let searchQuery = '';
+type StatusFilter = 'all' | 'submitted' | 'missing' | 'punctual';
+let statusFilter: StatusFilter = 'all';
 
 export async function loadAdminDashboard(options: { forceRefresh?: boolean } = {}) {
   const week = Number(els.adminWeekSelect.value || 1) || 1;
@@ -63,14 +66,25 @@ function renderAdminRows(students: UserProfile[], weekSubs: Submission[], allSub
   els.adminMissing.textContent = String(Math.max(0, students.length - weekSubs.length));
   els.adminPunctual.textContent = String(weekSubs.filter((s) => isPunctualSubmission(s)).length);
 
+  const q = searchQuery.trim().toLowerCase();
   const rows = [...students]
     .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'))
     .map((st) => {
       const userSubs = allSubs.filter((x) => x.userId === st.uid);
       const s = byUid.get(st.uid);
+      const badgeThisWeek = !!s && isPunctualSubmission(s);
+      return { st, userSubs, s, badgeThisWeek };
+    })
+    .filter(({ st }) => !q || (st.name || '').toLowerCase().includes(q) || (st.studentId || '').includes(q))
+    .filter(({ s, badgeThisWeek }) => {
+      if (statusFilter === 'submitted') return !!s;
+      if (statusFilter === 'missing') return !s;
+      if (statusFilter === 'punctual') return badgeThisWeek;
+      return true;
+    })
+    .map(({ st, userSubs, s, badgeThisWeek }) => {
       const punctualTotal = userSubs.filter((x) => isPunctualSubmission(x)).length;
       const growth = getGrowthState(userSubs.length);
-      const badgeThisWeek = !!s && isPunctualSubmission(s);
       const status = s ? `<span class="tag green">제출${badgeThisWeek ? ' ⏰' : ''}</span>` : '<span class="tag pink">미제출</span>';
       const detail = s
         ? `<div class="student-sub-detail">${imgWithFallback(s.photoURL, '인증샷', '')}<div><div class="reflection-label">성찰 및 다짐</div><p>${safeText(s.reflection || '(작성된 성찰이 없습니다)')}</p><div class="helper">제출 당시 목표 v${Number(s.goalVersion || 1)} · ${safeText(s.goalSnapshot?.goalText || '목표 기록 없음')}</div><div class="helper">${safeText(formatDateTime(new Date(s.submittedAt)))} ${badgeThisWeek ? '· ⏰ 정시 배지 획득' : ''}</div></div></div>`
@@ -78,10 +92,10 @@ function renderAdminRows(students: UserProfile[], weekSubs: Submission[], allSub
       const goalBox = st.goalText
         ? `<div class="admin-goal-box"><div class="small muted">현재 행동 목표</div><div class="admin-goal-text">${safeText(st.goalText)}</div><div class="helper">${safeText(formatGoalSchedule(st))}</div><details class="goal-history-details" data-uid="${safeText(st.uid)}"><summary>목표 버전 ${st.currentGoalVersion || 1}개 · 이력 보기</summary><div class="admin-history-list" data-history-slot></div></details></div>`
         : '';
-      return `<div class="student-row"><div class="student-row-top"><div class="student-identity">${characterMarkup(st.characterType || 'rabbit', userSubs.length, 'small')}<div><div class="student-name student-name-link" data-history-uid="${safeText(st.uid)}">${safeText(st.name || '이름 미입력')}<span class="chev">›</span></div><div class="student-id">${safeText(st.studentId || '학번 미입력')}</div></div></div><div class="student-progress"><span class="tag blue">Lv.${growth.stage}</span><span class="tag yellow">⏰ 총 ${punctualTotal}</span>${status}</div></div>${goalBox}${detail}</div>`;
+      return `<div class="student-row"><div class="student-row-top"><div class="student-identity">${characterMarkup(st.characterType || 'rabbit', userSubs.length, 'small')}<div><div class="student-name student-name-link" data-history-uid="${safeText(st.uid)}">${safeText(st.name || '이름 미입력')}<span class="chev">›</span></div><div class="student-id">${safeText(st.studentId || '학번 미입력')}</div></div></div><div class="student-progress"><span class="tag accent">Lv.${growth.stage}</span><span class="tag yellow">⏰ 총 ${punctualTotal}</span>${status}</div></div>${goalBox}${detail}</div>`;
     })
     .join('');
-  els.studentTable.innerHTML = rows || '<div class="panel body-sm muted">등록된 학생이 없습니다.</div>';
+  els.studentTable.innerHTML = rows || '<div class="panel body-sm muted">조건에 맞는 학생이 없습니다.</div>';
 
   // Lazily fetch goal-version history only when a row's <details> is actually opened,
   // instead of pre-fetching every student's subcollection on every dashboard refresh.
@@ -111,14 +125,14 @@ function renderAdminRows(students: UserProfile[], weekSubs: Submission[], allSub
 
 function historyWeekCardHtml(row: ReturnType<typeof computeStudentWeekRows>[number]): string {
   if (row.status === 'future') {
-    return `<div class="history-week-card future"><div class="history-week-top"><b>WEEK ${row.week}</b><span class="tag">아직 시작 전</span></div></div>`;
+    return `<div class="history-week-item future"><div class="history-week-card"><div class="history-week-top"><b>WEEK ${row.week}</b><span class="tag">아직 시작 전</span></div></div></div>`;
   }
   if (row.status === 'missing') {
-    return `<div class="history-week-card"><div class="history-week-top"><b>WEEK ${row.week}</b><span class="tag pink">미제출</span></div></div>`;
+    return `<div class="history-week-item"><div class="history-week-card"><div class="history-week-top"><b>WEEK ${row.week}</b><span class="tag pink">미제출</span></div></div></div>`;
   }
   const s = row.sub!;
   const badge = isPunctualSubmission(s);
-  return `<div class="history-week-card submitted"><div class="history-week-top"><b>WEEK ${row.week}</b><span class="tag green">제출${badge ? ' · ⏰ 정시' : ''}</span></div><div class="history-week-body">${imgWithFallback(s.photoURL, `${row.week}주차 인증샷`, '')}<div><div class="reflection-label">성찰 및 다짐</div><p>${safeText(s.reflection || '(작성된 성찰이 없습니다)')}</p><div class="helper">제출 당시 목표 v${Number(s.goalVersion || 1)} · ${safeText(s.goalSnapshot?.goalText || '목표 기록 없음')}</div><div class="helper">${safeText(formatDateTime(new Date(s.submittedAt)))}</div></div></div></div>`;
+  return `<div class="history-week-item submitted"><div class="history-week-card submitted"><div class="history-week-top"><b>WEEK ${row.week}</b><span class="tag green">제출${badge ? ' · ⏰ 정시' : ''}</span></div><div class="history-week-body">${imgWithFallback(s.photoURL, `${row.week}주차 인증샷`, '')}<div><div class="reflection-label">성찰 및 다짐</div><p>${safeText(s.reflection || '(작성된 성찰이 없습니다)')}</p><div class="helper">제출 당시 목표 v${Number(s.goalVersion || 1)} · ${safeText(s.goalSnapshot?.goalText || '목표 기록 없음')}</div><div class="helper">${safeText(formatDateTime(new Date(s.submittedAt)))}</div></div></div></div></div>`;
 }
 
 async function openStudentHistory(uid: string) {
@@ -150,6 +164,18 @@ export function initAdminEvents() {
   els.adminWeekSelect.onchange = () => void loadAdminDashboard(); // cached — just re-renders for the newly selected week
   els.adminRefreshBtn.onclick = () => void loadAdminDashboard({ forceRefresh: true });
   els.adminExportBtn.onclick = () => void exportExcel();
+
+  els.adminSearchInput.oninput = () => {
+    searchQuery = els.adminSearchInput.value;
+    void loadAdminDashboard(); // cached — search/filter never re-fetches
+  };
+  els.adminFilter.querySelectorAll<HTMLButtonElement>('.admin-filter-chip').forEach((chip) => {
+    chip.onclick = () => {
+      statusFilter = (chip.dataset.filter as StatusFilter) || 'all';
+      els.adminFilter.querySelectorAll('.admin-filter-chip').forEach((c) => c.classList.toggle('active', c === chip));
+      void loadAdminDashboard();
+    };
+  });
 }
 
 async function exportExcel() {
