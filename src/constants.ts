@@ -1,14 +1,26 @@
 import type { CharacterType } from './types';
 
 // ---------------------------------------------------------------------------
-// Program calendar. This value MUST stay in sync with the matching constant
-// baked into firestore.rules and storage.rules (search for PROGRAM_START in
-// those files) — the rules cannot read this TypeScript file, so if you ever
-// need to run this for a different semester, update all three places.
+// Program calendar. PRODUCTION VALUES (the string literal defaults below)
+// MUST stay in sync with the matching constants baked into firestore.rules
+// (search for PROGRAM_START there) — the rules cannot read this TypeScript
+// file or any env var, so a real semester change means updating this file's
+// defaults AND firestore.rules together (storage.rules has no date logic).
+//
+// The VITE_PROGRAM_START/VITE_PROGRAM_END/VITE_SEMESTER_ID env vars exist
+// ONLY so a separate staging Firebase project + staging build can point at a
+// different (e.g. "start this week") calendar for pre-launch device testing,
+// without ever touching these production defaults or the deployed production
+// rules. A real production build (.env, no staging overrides) always falls
+// back to the hardcoded production dates below — see scripts/generate-staging-rules.mjs
+// for how the equivalent staging *rules* (firestore.staging.rules) are kept
+// in lockstep with these, changing nothing else about the security logic.
 // ---------------------------------------------------------------------------
+const env = import.meta.env;
+
 export const TOTAL_WEEKS = 15;
-export const PROGRAM_START = new Date('2026-09-07T00:00:00+09:00'); // Monday of week 1, KST
-export const PROGRAM_END = new Date('2026-12-20T23:59:59+09:00'); // Sunday of week 15, KST
+export const PROGRAM_START = new Date(env.VITE_PROGRAM_START || '2026-09-07T00:00:00+09:00'); // Monday of week 1, KST
+export const PROGRAM_END = new Date(env.VITE_PROGRAM_END || '2026-12-20T23:59:59+09:00'); // Sunday of week 15, KST
 
 // Every submission, feed post, and student roster entry is stamped with this
 // on creation and every admin/feed query filters by it, so running this app
@@ -17,7 +29,7 @@ export const PROGRAM_END = new Date('2026-12-20T23:59:59+09:00'); // Sunday of w
 // current one. Past-semester data is never deleted by changing this — it
 // just stops appearing in the current dashboard/feed. Bump it once per
 // semester, alongside PROGRAM_START/PROGRAM_END above and in firestore.rules.
-export const SEMESTER_ID = '2026-fall';
+export const SEMESTER_ID = env.VITE_SEMESTER_ID || '2026-fall';
 
 export const WEEKDAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 export const DURATION_OPTIONS = [30, 45, 60, 75, 90, 105, 120];

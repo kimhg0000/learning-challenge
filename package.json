@@ -6,13 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:staging": "tsc --noEmit && vite build --mode staging",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "rules:emulators": "firebase emulators:start --project demo-learning-challenge --only firestore,storage,auth",
     "rules:test": "firebase emulators:exec --project demo-learning-challenge --only firestore,storage,auth \"vitest run --config tests/rules/vitest.rules.config.ts\"",
-    "integration:test": "firebase emulators:exec --project demo-learning-challenge --only firestore,storage,auth \"vitest run --config tests/integration/vitest.integration.config.ts\""
+    "integration:test": "firebase emulators:exec --project demo-learning-challenge --only firestore,storage,auth \"vitest run --config tests/integration/vitest.integration.config.ts\"",
+    "staging:generate-rules": "node scripts/generate-staging-rules.mjs",
+    "staging:deploy-rules": "firebase deploy --project staging --config firebase.staging.json --only firestore:rules,firestore:indexes,storage"
   },
   "dependencies": {
     "firebase": "^12.18.0",

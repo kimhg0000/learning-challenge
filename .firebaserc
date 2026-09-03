@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "week-learning-challenge"
+    "default": "week-learning-challenge",
+    "staging": "learning-challenge-staging"
   }
 }

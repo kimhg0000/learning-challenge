@@ -92,6 +92,68 @@ with real student data and is not a substitute for it.
    as environment variables in Netlify (Site settings → Environment
    variables) — `.env` is git-ignored and never deployed automatically.
 
+## Staging environment (real Firebase, before the real semester starts)
+
+Emulator tests prove the rules and app code are correct; they don't prove a
+real phone can actually reach a real Firebase project over the internet. For
+that, this project uses a **second, fully separate Firebase project**
+(`learning-challenge-staging`) plus a **dedicated, stable Netlify site**
+(`https://learning-challenge-staging.netlify.app` — not a rotating draft
+URL), so real end-to-end device testing never touches production
+Authentication, Firestore, Storage, rules, or student data, and never
+requires relaxing the production date rule.
+
+The only difference between the staging and production security rules is
+the semester calendar — enforced by generating `firestore.staging.rules`
+from the real `firestore.rules` and verifying byte-for-byte equality outside
+the two calendar functions:
+
+```
+node scripts/generate-staging-rules.mjs        # writes firestore.staging.rules
+npm run staging:deploy-rules                    # deploys it + indexes + storage.rules to the staging project
+```
+
+`storage.rules` has no date logic at all, so the exact same file deploys to
+both projects unchanged.
+
+### One-time setup (mirrors "Setting up the real Firebase project" above, on a second project)
+
+1. Create a second Firebase project (e.g. `learning-challenge-staging`),
+   enable the same Authentication providers, Firestore (same region as
+   Storage), and Storage.
+2. Add a Web app there, copy its config into `.env.staging` (see
+   `.env.staging.example`) — a **completely different project** from `.env`.
+   Also set `VITE_PROGRAM_START`/`VITE_PROGRAM_END` a week or two before
+   "now" (not exactly "now"), so staging always has a genuinely expired
+   week, a genuinely current one, and future ones to test all three
+   date-window behaviors at once. Regenerate the rules (above) to match.
+3. `.firebaserc` already has a `staging` alias pointing at this project —
+   `npx firebase deploy --project staging --config firebase.staging.json ...`
+   (or just `npm run staging:deploy-rules`).
+4. Add the instructor's email as its own `instructorAllowlist` document in
+   the **staging** project's Firestore too — it is a separate database from
+   production, so this is a separate manual step there.
+5. Create a dedicated Netlify site for staging and deploy the staging build
+   to it directly (bypassing Netlify's own build step, which would
+   otherwise re-run `npm run build` from `netlify.toml` — i.e. a
+   **production**-mode build — and silently overwrite the staging config
+   you just built locally):
+   ```
+   npm run build:staging
+   npx netlify deploy --site <staging-site-id> --dir=dist --prod --no-build
+   ```
+6. Add the staging Netlify domain (`learning-challenge-staging.netlify.app`)
+   to the **staging** Firebase project's Authentication → Settings →
+   Authorized domains (once — it's a stable URL, so this never needs
+   redoing on subsequent deploys, unlike a draft URL).
+
+From then on, every real device test flow — new account, Google or
+email/password login, photo capture, submission, punctual badge, goal
+v1→v2 with snapshot preservation, logout/login, instructor review, Excel
+export — runs against real Firebase at that fixed URL, fully isolated from
+production, with production's 2026-09-07 date rule and rules file
+completely untouched.
+
 ## Testing
 
 ```
