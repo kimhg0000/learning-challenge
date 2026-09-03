@@ -3,6 +3,7 @@ import { formatDate, getScheduledWindow, getWeekBounds, pad } from '../../utils/
 import { getGrowthState } from '../../utils/growth';
 import { isPunctualSubmission, punctualBadgeCount } from '../../utils/punctual';
 import { safeText } from '../../utils/text';
+import { imgWithFallback } from '../../utils/imgFallback';
 import { els } from '../dom';
 import { state } from '../state';
 import { characterMarkup } from '../character';
@@ -71,7 +72,7 @@ export function renderHome() {
       .slice(0, 3)
       .map(
         (f) =>
-          `<div class="mini-feed-item"><img src="${safeText(f.photoURL || '')}" alt="익명 인증"><div><strong>${safeText(f.anonName || '익명 도전자')} · ${Number(f.week)}주차 ${f.punctualClaim ? '⏰' : ''}</strong><p>${safeText(f.reflection || '')}</p></div></div>`,
+          `<div class="mini-feed-item">${imgWithFallback(f.photoURL, '익명 인증', '')}<div><strong>${safeText(f.anonName || '익명 도전자')} · ${Number(f.week)}주차 ${f.punctualClaim ? '⏰' : ''}</strong><p>${safeText(f.reflection || '')}</p></div></div>`,
       )
       .join('') || '<div class="panel body-sm muted" style="padding:13px">아직 공개된 인증이 없습니다.</div>';
 }

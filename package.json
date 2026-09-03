@@ -15,7 +15,10 @@
     "rules:test": "firebase emulators:exec --project demo-learning-challenge --only firestore,storage,auth \"vitest run --config tests/rules/vitest.rules.config.ts\"",
     "integration:test": "firebase emulators:exec --project demo-learning-challenge --only firestore,storage,auth \"vitest run --config tests/integration/vitest.integration.config.ts\"",
     "staging:generate-rules": "node scripts/generate-staging-rules.mjs",
-    "staging:deploy-rules": "firebase deploy --project staging --config firebase.staging.json --only firestore:rules,firestore:indexes,storage"
+    "staging:deploy-rules": "firebase deploy --project staging --config firebase.staging.json --only firestore:rules,firestore:indexes,storage",
+    "staging:generate-seed-rules": "node scripts/generate-staging-seed-rules.mjs",
+    "staging:deploy-seed-rules": "firebase deploy --project staging --config firebase.staging.seed.json --only firestore:rules",
+    "staging:seed": "tsx --env-file=.env.staging scripts/seed-staging-data.ts"
   },
   "dependencies": {
     "firebase": "^12.18.0",
@@ -26,6 +29,7 @@
     "@firebase/rules-unit-testing": "^5.0.2",
     "firebase-tools": "^15.29.0",
     "jsdom": "^30.0.1",
+    "tsx": "^4.23.13",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
     "vite-plugin-pwa": "^1.3.0",

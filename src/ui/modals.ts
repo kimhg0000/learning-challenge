@@ -254,6 +254,8 @@ export function openDetail(sub: Submission) {
   els.detailBadge.innerHTML = badge
     ? '<span class="tag yellow">⏰ 정해진 시간 실천 배지 획득</span>'
     : '<span class="tag">주차 내 정상 완료 · 정시 배지 없음</span>';
+  els.detailPhoto.classList.remove('hidden');
+  els.detailPhotoFallback.classList.add('hidden');
   els.detailPhoto.src = sub.photoURL || '';
   els.detailReflection.textContent = sub.reflection || '';
   const d = new Date(sub.submittedAt || Date.now());
@@ -287,6 +289,10 @@ export async function openGoalHistory() {
 // --- wiring ---
 
 export function initModalEvents() {
+  els.detailPhoto.onerror = () => {
+    els.detailPhoto.classList.add('hidden');
+    els.detailPhotoFallback.classList.remove('hidden');
+  };
   els.cameraStartBtn.onclick = startCamera;
   els.cameraCaptureBtn.onclick = capturePhoto;
   els.cameraFileBtn.onclick = () => els.cameraFileInput.click();
@@ -313,7 +319,7 @@ export function initModalEvents() {
       if (id === 'submission-modal') resetCameraUI();
     };
   });
-  [els.submissionModal, els.detailModal].forEach((m) => {
+  [els.submissionModal, els.detailModal, els.historyModal].forEach((m) => {
     m.addEventListener('click', (e) => {
       if (e.target === m) {
         m.classList.add('hidden');

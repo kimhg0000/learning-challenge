@@ -117,7 +117,7 @@ h3{font-size:16px;font-weight:800}
 
 /* instructor */
 .admin-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:12px 0}.admin-metric{padding:12px 8px;border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.03);text-align:center}.admin-metric b{display:block;font-family:var(--cyber);font-size:18px}.admin-metric span{font-size:10px;color:var(--muted)}
-.student-table{display:grid;gap:8px}.student-identity{display:flex;align-items:center;gap:9px}.student-progress{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px}.student-badge-stat{font-size:10px;font-weight:900;color:var(--yellow)}.student-row{padding:13px;border:1px solid var(--line);background:rgba(255,255,255,.025);border-radius:14px}.student-row-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.student-name{font-size:13px;font-weight:900}.student-id{font-size:10px;color:var(--muted);margin-top:3px}.student-sub-detail{display:grid;grid-template-columns:64px 1fr;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}.student-sub-detail img{width:64px;height:64px;object-fit:cover;border-radius:10px}.student-sub-detail p{font-size:11px;color:#cfd7e7;line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.admin-goal-box{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}.admin-goal-text{font-size:11px;font-weight:800;line-height:1.55;margin-top:4px}.goal-history-details{margin-top:8px}.goal-history-details summary{font-size:10px;color:var(--blue);font-weight:800;cursor:pointer;list-style:none}.goal-history-details summary::-webkit-details-marker{display:none}.admin-history-list{display:grid;gap:6px;margin-top:8px}.admin-history-item{padding:8px 9px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.025);font-size:10px;line-height:1.5;color:#cfd7e7}.admin-history-item b{color:#fff}
+.student-table{display:grid;gap:8px}.student-identity{display:flex;align-items:center;gap:9px}.student-progress{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px}.student-badge-stat{font-size:10px;font-weight:900;color:var(--yellow)}.student-row{padding:13px;border:1px solid var(--line);background:rgba(255,255,255,.025);border-radius:14px}.student-row-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.student-name{font-size:13px;font-weight:900}.student-name-link{cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-decoration-color:var(--blue);text-underline-offset:3px;color:#fff}.student-name-link:hover{color:var(--blue)}.student-name-link .chev{color:var(--blue);margin-left:3px;font-weight:900}.student-id{font-size:10px;color:var(--muted);margin-top:3px}.student-sub-detail{display:grid;grid-template-columns:64px 1fr;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}.student-sub-detail img{width:64px;height:64px;object-fit:cover;border-radius:10px}.student-sub-detail p{font-size:13px;font-weight:600;color:#fff;line-height:1.6;white-space:pre-wrap}.admin-goal-box{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}.admin-goal-text{font-size:11px;font-weight:800;line-height:1.55;margin-top:4px}.goal-history-details{margin-top:8px}.goal-history-details summary{font-size:10px;color:var(--blue);font-weight:800;cursor:pointer;list-style:none}.goal-history-details summary::-webkit-details-marker{display:none}.admin-history-list{display:grid;gap:6px;margin-top:8px}.admin-history-item{padding:8px 9px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.025);font-size:10px;line-height:1.5;color:#cfd7e7}.admin-history-item b{color:#fff}
 
 /* bottom nav */
 .bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:100%;max-width:520px;display:grid;grid-template-columns:repeat(4,1fr);background:rgba(9,12,20,.94);backdrop-filter:blur(18px);border-top:1px solid var(--line);padding:8px 8px calc(8px + var(--safe-bottom));z-index:20}.bottom-nav.admin-mode{grid-template-columns:repeat(5,1fr)}.nav-btn{border:0;background:none;color:#718099;padding:6px 3px;display:grid;place-items:center;gap:2px;font-size:9px;font-weight:700}.nav-btn .nav-ico{font-size:18px;line-height:1.1}.nav-btn.active{color:var(--blue)}
@@ -136,4 +136,28 @@ h3{font-size:16px;font-weight:800}
   .app-shell{min-height:calc(100dvh - 44px);border:1px solid rgba(255,255,255,.08);border-radius:28px;overflow:hidden;box-shadow:0 20px 80px rgba(0,0,0,.5)}
   .bottom-nav{bottom:22px;border-radius:0 0 28px 28px}
   .modal{align-items:center}.modal-card{border-radius:24px;max-height:88dvh}
+  .modal-card.wide{max-width:880px}
+  .modal-card.wide .history-weeks-grid{grid-template-columns:1fr 1fr}
 }
+
+/* student history modal (instructor view) */
+.history-summary-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:14px 0}
+.history-summary-grid .stat{padding:11px;border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.03)}
+.history-summary-grid .stat span{display:block;font-size:10px;color:var(--muted)}
+.history-summary-grid .stat b{display:block;font-family:var(--cyber);font-size:15px;margin-top:4px;line-height:1.4}
+.history-summary-grid .stat.goal-text{grid-column:1/-1}
+.history-weeks-grid{display:grid;gap:9px}
+.history-week-card{border:1px solid var(--line);border-radius:14px;padding:12px;background:rgba(255,255,255,.025)}
+.history-week-card.submitted{border-color:rgba(83,245,139,.28)}
+.history-week-card.future{opacity:.5}
+.history-week-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.history-week-top b{font-family:var(--cyber);font-size:12px}
+.history-week-body{display:grid;grid-template-columns:64px 1fr;gap:10px;margin-top:10px}
+.history-week-body img{width:64px;height:64px;object-fit:cover;border-radius:10px;background:#151924}
+.history-week-body p{font-size:12px;color:#dfe5f1;line-height:1.6;white-space:pre-wrap}
+.reflection-label{font-size:10px;font-weight:900;color:var(--blue);letter-spacing:.02em;margin-bottom:3px}
+
+/* broken-image fallback, used anywhere a stored photo might fail to load
+   (network blip, deleted Storage object) — shows a clear placeholder
+   instead of the browser's raw broken-image icon */
+.img-fallback{display:flex;align-items:center;justify-content:center;text-align:center;background:#151924;color:var(--muted);font-size:10px;line-height:1.5;padding:4px}

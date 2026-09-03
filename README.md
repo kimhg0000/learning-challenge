@@ -154,12 +154,39 @@ export — runs against real Firebase at that fixed URL, fully isolated from
 production, with production's 2026-09-07 date rule and rules file
 completely untouched.
 
+### Re-seeding staging test data
+
+`scripts/seed-staging-data.ts` creates two realistic students through the
+**real** `FirebaseBackend` (not raw Firestore writes), so the seed data
+exercises the exact same `submitWeek()`/`updateGoal()`/`completeOnboarding()`
+code real students use — student A submits week 1 then week 3 (with a
+v1→v2 goal edit and a punctual badge), student B submits week 3 only
+(non-punctual). Because a genuinely past week's window has already closed
+by the time you re-seed, this needs a brief, staging-only rules relaxation:
+
+```
+npm run staging:generate-seed-rules   # writes firestore.staging.seed.rules (week-window check relaxed)
+npm run staging:deploy-seed-rules     # deploys ONLY that relaxation, staging project only
+npm run staging:seed                  # runs the real submission flow for both students
+npm run staging:deploy-rules          # ALWAYS restore the real rules immediately after
+```
+
+To fully reset staging first (e.g. before re-seeding with different
+profiles), delete the disposable collections directly — this never touches
+`instructorAllowlist`, which is only ever set up manually in Console:
+
+```
+npx firebase firestore:delete users --project staging -r -f
+npx firebase firestore:delete submissions --project staging -r -f
+npx firebase firestore:delete feedPosts --project staging -r -f
+```
+
 ## Testing
 
 ```
-npm test                 # unit tests — pure logic, no network, runs anywhere
-npm run rules:test        # Firestore/Storage security rules (34 tests), needs Java 21+ + Firebase CLI
-npm run integration:test  # real FirebaseBackend against the emulator — races, upload failures, 100x15 scale
+npm test                 # unit tests (57) — pure logic, no network, runs anywhere
+npm run rules:test        # Firestore/Storage security rules (36 tests), needs Java 21+ + Firebase CLI
+npm run integration:test  # real FirebaseBackend against the emulator (10 tests) — races, upload failures, feed-post consistency, 100x15 scale
 npm run build             # typecheck + production build
 ```
 

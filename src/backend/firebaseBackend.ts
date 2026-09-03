@@ -60,6 +60,14 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+/** One-way SHA-256 hex digest — used to derive a deterministic feedPosts id from a submission id without ever exposing the uid it's built from (see submitWeek() step 3). */
+async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 export interface FirebaseBackendOptions {
   /**
    * Connects to the local Firebase Emulator Suite instead of a real project.
@@ -385,28 +393,53 @@ export class FirebaseBackend implements Backend {
       tx.set(subRef, submissionData);
     });
 
-    // 3) Best-effort anonymous feed copy. A failure here must NOT roll back
-    //    or fail the submission above — the private record (the one that
-    //    matters for grading) is already safely committed.
-    try {
-      const feedId = crypto.randomUUID();
-      const feedPhotoRef = ref(this.storage, `feedPhotos/${feedId}.jpg`);
-      await uploadBytes(feedPhotoRef, photoBlob, { contentType: 'image/jpeg' });
-      const feedPhotoURL = await getDownloadURL(feedPhotoRef);
-      const completedAfter = (await this.getMySubmissions(uid)).length;
-      await setDoc(doc(this.db, 'feedPosts', feedId), {
-        anonName: profile.anonName,
-        semesterId: SEMESTER_ID,
-        week,
-        reflection: reflection.trim(),
-        photoURL: feedPhotoURL,
-        characterType: profile.characterType,
-        characterStage: getGrowthState(completedAfter).stage,
-        punctualClaim: clientPunctualClaim,
-        createdAt: serverTimestamp(),
-      });
-    } catch (err) {
-      console.warn('[feed] public feed copy failed (submission itself already succeeded):', err);
+    // 3) Anonymous feed copy. This CANNOT be combined into the same
+    //    transaction as the private submission above: feedPosts' create rule
+    //    requires exists(submissions/{subId}) (see firestore.rules) so every
+    //    anonymous post is tied to a real, already-validated submission
+    //    without ever storing a uid — and inside a security rule,
+    //    exists()/get() always evaluate against the pre-transaction/batch
+    //    snapshot, even for another write in the SAME transaction. So the
+    //    submission must actually commit first; the feed write is
+    //    necessarily a second, later request, which is what leaves a real
+    //    (if narrow) window for a private-submission-without-feed-post
+    //    mismatch if that second request fails.
+    //
+    //    Two things reduce that window as far as it can go without weakening
+    //    the rule above: the feedId is deterministic (a one-way hash of
+    //    subId, never the raw uid — see storage.rules) rather than random,
+    //    so a retry is always idempotent and can never create a duplicate
+    //    feed post; and the whole step is retried a few times before it is
+    //    allowed to fail, since the private submission (already committed)
+    //    must never be rolled back for a feed-side failure.
+    const feedId = await sha256Hex(subId);
+    let feedError: unknown = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const feedPhotoRef = ref(this.storage, `feedPhotos/${feedId}.jpg`);
+        await uploadBytes(feedPhotoRef, photoBlob, { contentType: 'image/jpeg' });
+        const feedPhotoURL = await getDownloadURL(feedPhotoRef);
+        const completedAfter = (await this.getMySubmissions(uid)).length;
+        await setDoc(doc(this.db, 'feedPosts', feedId), {
+          anonName: profile.anonName,
+          semesterId: SEMESTER_ID,
+          week,
+          reflection: reflection.trim(),
+          photoURL: feedPhotoURL,
+          characterType: profile.characterType,
+          characterStage: getGrowthState(completedAfter).stage,
+          punctualClaim: clientPunctualClaim,
+          createdAt: serverTimestamp(),
+        });
+        feedError = null;
+        break;
+      } catch (err) {
+        feedError = err;
+        if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
+      }
+    }
+    if (feedError) {
+      console.warn(`[feed] public feed copy failed after 3 attempts (submission itself already succeeded, week ${week}):`, feedError);
     }
 
     return { id: subId, ...submissionData, serverCreatedAt: submitDate } as unknown as Submission;

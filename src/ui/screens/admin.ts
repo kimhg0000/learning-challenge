@@ -2,9 +2,12 @@ import { formatDate, formatDateTime } from '../../utils/date';
 import { getGrowthState } from '../../utils/growth';
 import { isPunctualSubmission } from '../../utils/punctual';
 import { safeText } from '../../utils/text';
+import { imgWithFallback } from '../../utils/imgFallback';
 import { formatGoalSchedule } from '../../utils/goal';
+import { computeStudentWeekRows } from '../../utils/studentHistory';
 import { downloadSemesterExcel } from '../../admin/excelExport';
 import { backend } from '../../backend';
+import { TOTAL_WEEKS } from '../../constants';
 import type { GoalVersion, Submission, UserProfile } from '../../types';
 import { els, toast } from '../dom';
 import { getWeekBounds } from '../../utils/date';
@@ -70,12 +73,12 @@ function renderAdminRows(students: UserProfile[], weekSubs: Submission[], allSub
       const badgeThisWeek = !!s && isPunctualSubmission(s);
       const status = s ? `<span class="tag green">제출${badgeThisWeek ? ' ⏰' : ''}</span>` : '<span class="tag pink">미제출</span>';
       const detail = s
-        ? `<div class="student-sub-detail"><img src="${safeText(s.photoURL || '')}" alt="인증샷"><div><p>${safeText(s.reflection || '')}</p><div class="helper">제출 당시 목표 v${Number(s.goalVersion || 1)} · ${safeText(s.goalSnapshot?.goalText || '목표 기록 없음')}</div><div class="helper">${safeText(formatDateTime(new Date(s.submittedAt)))} ${badgeThisWeek ? '· ⏰ 정시 배지 획득' : ''}</div></div></div>`
+        ? `<div class="student-sub-detail">${imgWithFallback(s.photoURL, '인증샷', '')}<div><div class="reflection-label">성찰 및 다짐</div><p>${safeText(s.reflection || '(작성된 성찰이 없습니다)')}</p><div class="helper">제출 당시 목표 v${Number(s.goalVersion || 1)} · ${safeText(s.goalSnapshot?.goalText || '목표 기록 없음')}</div><div class="helper">${safeText(formatDateTime(new Date(s.submittedAt)))} ${badgeThisWeek ? '· ⏰ 정시 배지 획득' : ''}</div></div></div>`
         : '';
       const goalBox = st.goalText
         ? `<div class="admin-goal-box"><div class="small muted">현재 행동 목표</div><div class="admin-goal-text">${safeText(st.goalText)}</div><div class="helper">${safeText(formatGoalSchedule(st))}</div><details class="goal-history-details" data-uid="${safeText(st.uid)}"><summary>목표 버전 ${st.currentGoalVersion || 1}개 · 이력 보기</summary><div class="admin-history-list" data-history-slot></div></details></div>`
         : '';
-      return `<div class="student-row"><div class="student-row-top"><div class="student-identity">${characterMarkup(st.characterType || 'rabbit', userSubs.length, 'small')}<div><div class="student-name">${safeText(st.name || '이름 미입력')}</div><div class="student-id">${safeText(st.studentId || '학번 미입력')}</div></div></div><div class="student-progress"><span class="tag blue">Lv.${growth.stage}</span><span class="tag yellow">⏰ 총 ${punctualTotal}</span>${status}</div></div>${goalBox}${detail}</div>`;
+      return `<div class="student-row"><div class="student-row-top"><div class="student-identity">${characterMarkup(st.characterType || 'rabbit', userSubs.length, 'small')}<div><div class="student-name student-name-link" data-history-uid="${safeText(st.uid)}">${safeText(st.name || '이름 미입력')}<span class="chev">›</span></div><div class="student-id">${safeText(st.studentId || '학번 미입력')}</div></div></div><div class="student-progress"><span class="tag blue">Lv.${growth.stage}</span><span class="tag yellow">⏰ 총 ${punctualTotal}</span>${status}</div></div>${goalBox}${detail}</div>`;
     })
     .join('');
   els.studentTable.innerHTML = rows || '<div class="panel body-sm muted">등록된 학생이 없습니다.</div>';
@@ -97,6 +100,50 @@ function renderAdminRows(students: UserProfile[], weekSubs: Submission[], allSub
       { once: true },
     );
   });
+
+  els.studentTable.querySelectorAll<HTMLElement>('.student-name-link').forEach((nameEl) => {
+    nameEl.onclick = () => {
+      const uid = nameEl.dataset.historyUid;
+      if (uid) void openStudentHistory(uid);
+    };
+  });
+}
+
+function historyWeekCardHtml(row: ReturnType<typeof computeStudentWeekRows>[number]): string {
+  if (row.status === 'future') {
+    return `<div class="history-week-card future"><div class="history-week-top"><b>WEEK ${row.week}</b><span class="tag">아직 시작 전</span></div></div>`;
+  }
+  if (row.status === 'missing') {
+    return `<div class="history-week-card"><div class="history-week-top"><b>WEEK ${row.week}</b><span class="tag pink">미제출</span></div></div>`;
+  }
+  const s = row.sub!;
+  const badge = isPunctualSubmission(s);
+  return `<div class="history-week-card submitted"><div class="history-week-top"><b>WEEK ${row.week}</b><span class="tag green">제출${badge ? ' · ⏰ 정시' : ''}</span></div><div class="history-week-body">${imgWithFallback(s.photoURL, `${row.week}주차 인증샷`, '')}<div><div class="reflection-label">성찰 및 다짐</div><p>${safeText(s.reflection || '(작성된 성찰이 없습니다)')}</p><div class="helper">제출 당시 목표 v${Number(s.goalVersion || 1)} · ${safeText(s.goalSnapshot?.goalText || '목표 기록 없음')}</div><div class="helper">${safeText(formatDateTime(new Date(s.submittedAt)))}</div></div></div></div>`;
+}
+
+async function openStudentHistory(uid: string) {
+  if (!dashboardCache) return;
+  const student = dashboardCache.students.find((s) => s.uid === uid);
+  if (!student) return;
+  const userSubs = dashboardCache.allSubs.filter((s) => s.userId === uid);
+  const punctualTotal = userSubs.filter((s) => isPunctualSubmission(s)).length;
+  const growth = getGrowthState(userSubs.length);
+
+  els.historyStudentName.textContent = student.name || '이름 미입력';
+  els.historySummary.innerHTML = [
+    `<div class="stat"><span>학번</span><b>${safeText(student.studentId || '미입력')}</b></div>`,
+    `<div class="stat"><span>캐릭터 레벨</span><b>Lv.${growth.stage} · ${safeText(growth.name)}</b></div>`,
+    `<div class="stat"><span>총 제출</span><b>${userSubs.length} / ${TOTAL_WEEKS}주</b></div>`,
+    `<div class="stat"><span>정시 배지</span><b>⏰ ${punctualTotal}개</b></div>`,
+    `<div class="stat goal-text"><span>현재 행동 목표 (v${student.currentGoalVersion || 1})</span><b>${safeText(student.goalText || '목표 기록 없음')}</b></div>`,
+  ].join('');
+
+  els.historyGoalVersions.innerHTML = '<div class="admin-history-item muted">불러오는 중...</div>';
+  els.historyWeeks.innerHTML = computeStudentWeekRows(userSubs).map(historyWeekCardHtml).join('');
+  els.historyModal.classList.remove('hidden');
+
+  const history = await backend.adminGetGoalHistory(uid);
+  els.historyGoalVersions.innerHTML = goalHistoryHtml(history);
 }
 
 export function initAdminEvents() {

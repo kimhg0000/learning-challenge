@@ -7,7 +7,15 @@ export interface FirebaseWebConfig {
   appId: string;
 }
 
-const env = import.meta.env;
+// Falls back to process.env when import.meta.env doesn't exist at all — real
+// Vite builds/dev/vitest always provide it, but a plain `tsx` script (e.g. a
+// one-off seed/verification script run outside Vite) does not. Without this
+// fallback, any such script crashes on import instead of exercising the real
+// app code — which is exactly what previously pushed a staging seed script
+// into hand-reimplementing submission logic instead of calling the real
+// FirebaseBackend, silently drifting from it (see submitWeek()'s feed-post
+// step, added after that drift caused a real bug).
+const env = import.meta.env ?? process.env;
 
 export const firebaseConfig: FirebaseWebConfig = {
   apiKey: env.VITE_FIREBASE_API_KEY ?? '',

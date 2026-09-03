@@ -16,7 +16,9 @@ import type { CharacterType } from './types';
 // for how the equivalent staging *rules* (firestore.staging.rules) are kept
 // in lockstep with these, changing nothing else about the security logic.
 // ---------------------------------------------------------------------------
-const env = import.meta.env;
+// Falls back to process.env when import.meta.env doesn't exist at all — see
+// the identical fallback (and its rationale) in src/config.ts.
+const env = import.meta.env ?? process.env;
 
 export const TOTAL_WEEKS = 15;
 export const PROGRAM_START = new Date(env.VITE_PROGRAM_START || '2026-09-07T00:00:00+09:00'); // Monday of week 1, KST

@@ -1,6 +1,7 @@
 import { TOTAL_WEEKS } from '../../constants';
 import { formatDateTime } from '../../utils/date';
 import { safeText } from '../../utils/text';
+import { imgWithFallback } from '../../utils/imgFallback';
 import { backend } from '../../backend';
 import { els } from '../dom';
 import { state } from '../state';
@@ -53,7 +54,7 @@ export function renderFeed() {
     state.publicFeed
       .map((f) => {
         const submitted = feedCreatedAtDate(f.createdAt);
-        return `<article class="feed-card"><img class="feed-img" src="${safeText(f.photoURL || '')}" alt="익명 학습 인증"><div class="feed-body"><div class="feed-top"><div style="display:flex;align-items:center;gap:8px">${characterMarkupForStage(f.characterType || 'rabbit', f.characterStage || 1, 'small')}<div class="anon">${safeText(f.anonName || '익명 도전자')}</div></div><span class="tag blue">${Number(f.week)}주차</span></div>${f.punctualClaim ? '<div style="margin-top:8px"><span class="tag yellow">⏰ 정시 실천 배지</span></div>' : ''}<div class="feed-reflection">${safeText(f.reflection || '')}</div><div class="feed-date">${formatDateTime(submitted)}</div></div></article>`;
+        return `<article class="feed-card">${imgWithFallback(f.photoURL, '익명 학습 인증', 'feed-img')}<div class="feed-body"><div class="feed-top"><div style="display:flex;align-items:center;gap:8px">${characterMarkupForStage(f.characterType || 'rabbit', f.characterStage || 1, 'small')}<div class="anon">${safeText(f.anonName || '익명 도전자')}</div></div><span class="tag blue">${Number(f.week)}주차</span></div>${f.punctualClaim ? '<div style="margin-top:8px"><span class="tag yellow">⏰ 정시 실천 배지</span></div>' : ''}<div class="feed-reflection">${safeText(f.reflection || '')}</div><div class="feed-date">${formatDateTime(submitted)}</div></div></article>`;
       })
       .join('') || `<div class="panel body-sm muted">${state.selectedFeedWeek ? state.selectedFeedWeek + '주차에 등록된 인증이 아직 없습니다.' : '아직 등록된 인증이 없습니다.'}</div>`;
 }

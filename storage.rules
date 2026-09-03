@@ -9,12 +9,15 @@ rules_version = '2';
 //                                  so a reused account in a later semester
 //                                  can never overwrite a past semester's photo.
 // - feedPhotos/{feedId}.jpg      — a second copy uploaded for the anonymous
-//                                  feed, named by a random id (never the uid),
-//                                  so the public feed never leaks a uid via
-//                                  its image URL. See firestore.rules for why
-//                                  a feedPosts document (which this photo
-//                                  belongs to) can only be created alongside
-//                                  a real, already-validated private submission.
+//                                  feed, named by a one-way SHA-256 hash of
+//                                  the private submission id (never the raw
+//                                  uid), so the public feed never leaks a
+//                                  uid via its image URL, while still making
+//                                  a retried feed write idempotent. See
+//                                  firestore.rules for why a feedPosts
+//                                  document (which this photo belongs to)
+//                                  can only be created alongside a real,
+//                                  already-validated private submission.
 //
 // Instructor status is decided the same way as in firestore.rules: via a
 // cross-service read of instructorAllowlist, never from a client-supplied

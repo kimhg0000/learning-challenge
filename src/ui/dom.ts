@@ -50,12 +50,16 @@ export const els = {
 
   detailModal: $('detail-modal'), detailWeekLabel: $('detail-week-label'), detailGoal: $('detail-goal'),
   detailGoalSchedule: $('detail-goal-schedule'), detailBadge: $('detail-badge'), detailPhoto: $<HTMLImageElement>('detail-photo'),
+  detailPhotoFallback: $('detail-photo-fallback'),
   detailReflection: $('detail-reflection'), detailMeta: $('detail-meta'),
   goalHistoryModal: $('goal-history-modal'), goalHistoryList: $('goal-history-list'),
 
   adminWeekSelect: $<HTMLSelectElement>('admin-week-select'), adminTotal: $('admin-total'), adminSubmitted: $('admin-submitted'),
   adminMissing: $('admin-missing'), adminPunctual: $('admin-punctual'), adminWeekDate: $('admin-week-date'),
   studentTable: $('student-table'), adminRefreshBtn: $('admin-refresh-btn'), adminExportBtn: $<HTMLButtonElement>('admin-export-btn'),
+
+  historyModal: $('student-history-modal'), historyStudentName: $('history-student-name'),
+  historySummary: $('history-summary'), historyGoalVersions: $('history-goal-versions'), historyWeeks: $('history-weeks'),
 
   toastWrap: $('toast-wrap'),
 };

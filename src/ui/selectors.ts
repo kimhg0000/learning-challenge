@@ -1,5 +1,5 @@
 import { DURATION_OPTIONS, PROGRAM_START, PROGRAM_END, TOTAL_WEEKS } from '../constants';
-import { formatDate, pad } from '../utils/date';
+import { formatDate, getCurrentProgramWeek, pad } from '../utils/date';
 import { els } from './dom';
 import { state } from './state';
 import { renderCharacterChoices } from './character';
@@ -42,6 +42,12 @@ export function populateSelectors() {
     els.testWeekSelect.add(new Option(`${w}주차`, String(w)));
   }
   els.testWeekSelect.value = String(state.prototypeWeek);
+  // Default the instructor dashboard to the CURRENT program week, not
+  // whatever the first <option> happens to be — without this, an
+  // instructor's very first look at the dashboard silently shows week 1
+  // (empty/expired data on staging, or simply the wrong week once the
+  // semester is underway) until they notice and manually change it.
+  els.adminWeekSelect.value = String(getCurrentProgramWeek());
 
   els.programPeriodText.textContent = `${formatDate(PROGRAM_START)} ~ ${formatDate(PROGRAM_END)} · 총 ${TOTAL_WEEKS}주`;
 
