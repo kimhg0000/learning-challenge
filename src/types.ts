@@ -23,6 +23,8 @@ export interface UserProfile {
   characterType: CharacterType;
   anonName: string;
   role: 'student' | 'instructor';
+  /** Which semester's roster this account belongs to (see constants.ts SEMESTER_ID). Set once at onboarding, never changes. */
+  semesterId: string;
   currentGoalVersion: number;
   goalText: string;
   weekday: number;
@@ -38,8 +40,9 @@ export interface GoalSnapshot extends GoalSettings {
 }
 
 export interface Submission {
-  id: string; // `${uid}_w${week}`
+  id: string; // `${uid}_${semesterId}_w${week}`
   userId: string;
+  semesterId: string;
   week: number;
   goalVersion: number;
   goalSnapshot: GoalSnapshot;
@@ -55,6 +58,7 @@ export interface Submission {
 export interface FeedPost {
   id: string;
   anonName: string;
+  semesterId: string;
   week: number;
   reflection: string;
   photoURL: string;

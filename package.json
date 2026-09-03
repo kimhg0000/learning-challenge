@@ -10,8 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "rules:emulators": "firebase emulators:start --only firestore,storage,auth",
-    "rules:test": "firebase emulators:exec --only firestore,storage,auth \"vitest run --config tests/rules/vitest.rules.config.ts\""
+    "rules:emulators": "firebase emulators:start --project demo-learning-challenge --only firestore,storage,auth",
+    "rules:test": "firebase emulators:exec --project demo-learning-challenge --only firestore,storage,auth \"vitest run --config tests/rules/vitest.rules.config.ts\"",
+    "integration:test": "firebase emulators:exec --project demo-learning-challenge --only firestore,storage,auth \"vitest run --config tests/integration/vitest.integration.config.ts\""
   },
   "dependencies": {
     "firebase": "^12.18.0",

@@ -1,5 +1,5 @@
 import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
-import { CHARACTER_TYPES } from '../constants';
+import { CHARACTER_TYPES, SEMESTER_ID } from '../constants';
 import { getGrowthState } from '../utils/growth';
 import { getScheduledWindow } from '../utils/date';
 import { makeAnonName } from '../utils/text';
@@ -35,13 +35,13 @@ function nowIso(): string {
 const SYNTHETIC_STUDENTS: UserProfile[] = [
   {
     uid: 'demo-classmate-1', name: '이서준', studentId: '2345678', email: '', characterType: 'fox',
-    anonName: makeAnonName('demo-classmate-1'), role: 'student', currentGoalVersion: 1,
+    anonName: makeAnonName('demo-classmate-1'), role: 'student', semesterId: SEMESTER_ID, currentGoalVersion: 1,
     goalText: '매주 정해진 시간에 전공 노트를 60분 복습한다.', weekday: 3, startTime: '19:00', duration: 60,
     goalCreatedAt: nowIso(), updatedAt: nowIso(), createdAt: nowIso(),
   },
   {
     uid: 'demo-classmate-2', name: '박지민', studentId: '3456789', email: '', characterType: 'otter',
-    anonName: makeAnonName('demo-classmate-2'), role: 'student', currentGoalVersion: 1,
+    anonName: makeAnonName('demo-classmate-2'), role: 'student', semesterId: SEMESTER_ID, currentGoalVersion: 1,
     goalText: '매주 영어 논문을 90분 읽고 표현 5개를 기록한다.', weekday: 5, startTime: '16:00', duration: 90,
     goalCreatedAt: nowIso(), updatedAt: nowIso(), createdAt: nowIso(),
   },
@@ -54,8 +54,9 @@ function syntheticSubmission(uid: string, profile: UserProfile, week: number, pu
   const win = getScheduledWindow(week, profile.weekday, profile.startTime, profile.duration);
   const submittedDate = punctual ? win.start : new Date(win.start.getTime() + 26 * 3600000);
   return {
-    id: `${uid}_w${week}`,
+    id: `${uid}_${SEMESTER_ID}_w${week}`,
     userId: uid,
+    semesterId: SEMESTER_ID,
     week,
     goalVersion: 1,
     goalSnapshot: { version: 1, goalText: profile.goalText, weekday: profile.weekday, startTime: profile.startTime, duration: profile.duration },
@@ -140,7 +141,7 @@ export class LocalBackend implements Backend {
     const stamp = nowIso();
     const profile: UserProfile = {
       uid, name: '교수자(체험)', studentId: '', email, characterType: 'rabbit',
-      anonName: makeAnonName(uid), role: 'instructor', currentGoalVersion: 1,
+      anonName: makeAnonName(uid), role: 'instructor', semesterId: SEMESTER_ID, currentGoalVersion: 1,
       goalText: '', weekday: 1, startTime: '09:00', duration: 30,
       goalCreatedAt: stamp, updatedAt: stamp, createdAt: stamp,
     };
@@ -163,7 +164,7 @@ export class LocalBackend implements Backend {
     const stamp = nowIso();
     const profile: UserProfile = {
       uid, name: input.name.trim(), studentId: input.studentId, email, characterType: input.characterType,
-      anonName: makeAnonName(uid), role: 'student', currentGoalVersion: 1,
+      anonName: makeAnonName(uid), role: 'student', semesterId: SEMESTER_ID, currentGoalVersion: 1,
       goalText: input.goal.goalText.trim(), weekday: input.goal.weekday, startTime: input.goal.startTime, duration: input.goal.duration,
       goalCreatedAt: stamp, updatedAt: stamp, createdAt: stamp,
     };
@@ -201,6 +202,9 @@ export class LocalBackend implements Backend {
   }
 
   async adminListStudents(): Promise<UserProfile[]> {
+    // Prototype mode never has more than one semester's worth of local data, so
+    // the semesterId parameter (used by FirebaseBackend to view an archived
+    // semester) is intentionally not implemented here.
     const real = (await loadState(DEMO_STUDENT_UID)).profile;
     return [...(real ? [real] : []), ...SYNTHETIC_STUDENTS];
   }
@@ -220,6 +224,7 @@ export class LocalBackend implements Backend {
     const mineAsFeed: FeedPost[] = mine.map((s) => ({
       id: s.id,
       anonName: myProfile?.anonName || makeAnonName(DEMO_STUDENT_UID),
+      semesterId: SEMESTER_ID,
       week: s.week,
       reflection: s.reflection,
       photoURL: s.photoURL,
@@ -229,8 +234,8 @@ export class LocalBackend implements Backend {
       createdAt: new Date(s.submittedAt),
     }));
     const sample: FeedPost[] = [
-      { id: 'sample-1', anonName: '도전자 314', week: 2, reflection: '이번 주에는 계획한 시간만큼 집중해서 읽었다. 다음 주에는 시작 10분 전에 자리를 잡아 흐름을 더 안정적으로 만들고 싶다.', photoURL: SAMPLE_PHOTO, characterType: 'fox', characterStage: 2, punctualClaim: true, createdAt: new Date('2026-09-16T19:20:00') },
-      { id: 'sample-2', anonName: '도전자 628', week: 1, reflection: '첫 주라 긴장했지만 계획한 행동을 끝냈다. 다음 주에는 기록까지 더 꼼꼼하게 남겨보겠다.', photoURL: SAMPLE_PHOTO, characterType: 'panda', characterStage: 1, punctualClaim: false, createdAt: new Date('2026-09-10T15:00:00') },
+      { id: 'sample-1', anonName: '도전자 314', semesterId: SEMESTER_ID, week: 2, reflection: '이번 주에는 계획한 시간만큼 집중해서 읽었다. 다음 주에는 시작 10분 전에 자리를 잡아 흐름을 더 안정적으로 만들고 싶다.', photoURL: SAMPLE_PHOTO, characterType: 'fox', characterStage: 2, punctualClaim: true, createdAt: new Date('2026-09-16T19:20:00') },
+      { id: 'sample-2', anonName: '도전자 628', semesterId: SEMESTER_ID, week: 1, reflection: '첫 주라 긴장했지만 계획한 행동을 끝냈다. 다음 주에는 기록까지 더 꼼꼼하게 남겨보겠다.', photoURL: SAMPLE_PHOTO, characterType: 'panda', characterStage: 1, punctualClaim: false, createdAt: new Date('2026-09-10T15:00:00') },
     ];
     return [...mineAsFeed, ...sample]
       .filter((f) => !weekFilter || f.week === weekFilter)
@@ -248,8 +253,9 @@ export class LocalBackend implements Backend {
     const punctual = input.prototypePunctualOverride ?? (submitDate >= win.start && submitDate <= win.end);
 
     const submission: Submission = {
-      id: `${uid}_w${input.week}`,
+      id: `${uid}_${SEMESTER_ID}_w${input.week}`,
       userId: uid,
+      semesterId: SEMESTER_ID,
       week: input.week,
       goalVersion: profile.currentGoalVersion,
       goalSnapshot: { version: profile.currentGoalVersion, goalText: profile.goalText, weekday: profile.weekday, startTime: profile.startTime, duration: profile.duration },

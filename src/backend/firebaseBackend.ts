@@ -8,12 +8,14 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
+  connectAuthEmulator,
   type Auth,
 } from 'firebase/auth';
 import {
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
+  connectFirestoreEmulator,
   doc,
   getDoc,
   getDocs,
@@ -28,10 +30,10 @@ import {
   runTransaction,
   type Firestore,
 } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL, type FirebaseStorage } from 'firebase/storage';
+import { getStorage, ref, uploadBytes, getDownloadURL, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage';
 
 import { firebaseConfig } from '../config';
-import { CHARACTER_TYPES } from '../constants';
+import { CHARACTER_TYPES, SEMESTER_ID, TOTAL_WEEKS } from '../constants';
 import { getGrowthState } from '../utils/growth';
 import { getScheduledWindow, isWithinSubmissionWindow } from '../utils/date';
 import { makeAnonName } from '../utils/text';
@@ -58,6 +60,19 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+export interface FirebaseBackendOptions {
+  /**
+   * Connects to the local Firebase Emulator Suite instead of a real project.
+   * Used ONLY by the integration test suite (tests/integration) — never set
+   * by the app itself (backend/index.ts always constructs a plain
+   * `new FirebaseBackend()` against the real project from .env). Lets tests
+   * exercise the real submitWeek()/idempotency/query logic against the same
+   * firestore.rules/storage.rules the production app is bound by, instead of
+   * re-testing only the rules in isolation.
+   */
+  useEmulator?: boolean;
+}
+
 export class FirebaseBackend implements Backend {
   readonly kind = 'firebase' as const;
   private app: FirebaseApp;
@@ -65,9 +80,39 @@ export class FirebaseBackend implements Backend {
   private db: Firestore;
   private storage: FirebaseStorage;
 
-  constructor() {
+  constructor(options: FirebaseBackendOptions = {}) {
+    if (options.useEmulator) {
+      // Deliberately NOT firebaseConfig/.env here: the emulator doesn't
+      // authenticate against a real project, but every connected service
+      // (auth/firestore/storage) must agree on the same projectId — and it
+      // must match the --project flag "rules:test" passes to
+      // `firebase emulators:exec` (see tests/rules for the same requirement).
+      // Each instance also gets a unique Firebase app name so a test process
+      // can construct many FirebaseBackend instances (one per simulated user)
+      // without "app already exists" collisions.
+      this.app = initializeApp(
+        {
+          apiKey: 'demo-api-key',
+          projectId: 'demo-learning-challenge',
+          appId: '1:demo:web:demo',
+          storageBucket: 'demo-learning-challenge.appspot.com',
+        },
+        `emulator-${Date.now()}-${Math.random()}`,
+      );
+      this.auth = getAuth(this.app);
+      // No IndexedDB in the Node test runner, and no need for offline
+      // persistence in a short-lived test process — plain in-memory cache.
+      this.db = initializeFirestore(this.app, {});
+      connectAuthEmulator(this.auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+      connectFirestoreEmulator(this.db, '127.0.0.1', 8080);
+      this.storage = getStorage(this.app);
+      connectStorageEmulator(this.storage, '127.0.0.1', 9199);
+      return;
+    }
+
     this.app = initializeApp(firebaseConfig);
     this.auth = getAuth(this.app);
+
     // Persistent local cache lets a student re-open the app offline and still
     // see their own previously-loaded profile/submissions, and queues writes
     // made while offline until connectivity returns (Firestore handles the
@@ -130,6 +175,7 @@ export class FirebaseBackend implements Backend {
       characterType: existing?.characterType || 'rabbit',
       anonName: existing?.anonName || makeAnonName(uid),
       role: 'instructor',
+      semesterId: SEMESTER_ID,
       currentGoalVersion: 1,
       goalText: '교수자 계정은 개인 행동목표를 설정하지 않습니다.',
       weekday: 1,
@@ -158,6 +204,7 @@ export class FirebaseBackend implements Backend {
       characterType: input.characterType,
       anonName: makeAnonName(uid),
       role: 'student',
+      semesterId: SEMESTER_ID,
       currentGoalVersion: 1,
       goalText: input.goal.goalText.trim(),
       weekday: input.goal.weekday,
@@ -238,27 +285,44 @@ export class FirebaseBackend implements Backend {
   }
 
   async getMySubmissions(uid: string): Promise<Submission[]> {
-    const q = query(collection(this.db, 'submissions'), where('userId', '==', uid));
-    const qs = await getDocs(q);
-    return qs.docs.map((d) => ({ id: d.id, ...d.data() }) as Submission);
+    // Scoped to the current semester on purpose: if the same account is ever
+    // reused in a later semester, a prior semester's completed weeks must
+    // never count toward "this semester's" progress/growth/streak — see
+    // constants.ts SEMESTER_ID.
+    //
+    // Deliberately NOT a where(userId==uid) query: Firestore evaluates a
+    // `list` security rule once for the whole query, without per-document
+    // access to `resource.data` — so a rule like
+    // "allow list if resource.data.userId == request.auth.uid" cannot
+    // actually be expressed for a top-level collection query the way it can
+    // for a single get(). The rules instead only allow `list` on
+    // `submissions` to instructors, and a student fetches their own 15
+    // (at most) submission docs directly by their fully deterministic ids,
+    // each individually authorized by the existing `allow get` rule
+    // (owner or instructor). Same Firestore read cost either way — a get()
+    // on a document that doesn't exist is billed the same as one that does.
+    const ids = Array.from({ length: TOTAL_WEEKS }, (_, i) => `${uid}_${SEMESTER_ID}_w${i + 1}`);
+    const snaps = await Promise.all(ids.map((id) => getDoc(doc(this.db, 'submissions', id))));
+    return snaps.filter((s) => s.exists()).map((s) => ({ id: s.id, ...s.data() }) as Submission);
   }
 
-  async adminListStudents(): Promise<UserProfile[]> {
-    const q = query(collection(this.db, 'users'), where('role', '==', 'student'));
+  async adminListStudents(semesterId: string = SEMESTER_ID): Promise<UserProfile[]> {
+    const q = query(collection(this.db, 'users'), where('role', '==', 'student'), where('semesterId', '==', semesterId));
     const qs = await getDocs(q);
     return qs.docs.map((d) => d.data() as UserProfile);
   }
 
-  async adminListAllSubmissions(): Promise<Submission[]> {
-    const qs = await getDocs(collection(this.db, 'submissions'));
+  async adminListAllSubmissions(semesterId: string = SEMESTER_ID): Promise<Submission[]> {
+    const q = query(collection(this.db, 'submissions'), where('semesterId', '==', semesterId));
+    const qs = await getDocs(q);
     return qs.docs.map((d) => ({ id: d.id, ...d.data() }) as Submission);
   }
 
   async listFeed(weekFilter: number): Promise<FeedPost[]> {
     const base = collection(this.db, 'feedPosts');
     const q = weekFilter
-      ? query(base, where('week', '==', weekFilter), orderBy('createdAt', 'desc'), limit(200))
-      : query(base, orderBy('createdAt', 'desc'), limit(100));
+      ? query(base, where('semesterId', '==', SEMESTER_ID), where('week', '==', weekFilter), orderBy('createdAt', 'desc'), limit(200))
+      : query(base, where('semesterId', '==', SEMESTER_ID), orderBy('createdAt', 'desc'), limit(100));
     const qs = await getDocs(q);
     return qs.docs.map((d) => ({ id: d.id, ...d.data() }) as FeedPost);
   }
@@ -267,14 +331,19 @@ export class FirebaseBackend implements Backend {
     const { week, photoBlob, reflection } = input;
     if (!isWithinSubmissionWindow(week)) throw new OutsideWindowError(week);
 
-    const subId = `${uid}_w${week}`;
+    // Both the doc id and the storage path are namespaced by semester so that
+    // if the same account is ever reused in a later semester (see
+    // constants.ts SEMESTER_ID), a new week-1 submission can never collide
+    // with — or silently overwrite the Storage photo for — a past semester's
+    // week-1 submission under the same uid.
+    const subId = `${uid}_${SEMESTER_ID}_w${week}`;
     const existing = await getDoc(doc(this.db, 'submissions', subId));
     if (existing.exists()) throw new SubmissionExistsError(week);
 
     // 1) Upload the private proof photo FIRST. If this fails, we stop here —
     //    no Firestore document is ever written, so there is no way to end up
     //    with a "database says submitted, but there's no photo" record.
-    const photoPath = `submissions/${uid}/week${week}.jpg`;
+    const photoPath = `submissions/${uid}/${SEMESTER_ID}/week${week}.jpg`;
     const photoStorageRef = ref(this.storage, photoPath);
     await uploadBytes(photoStorageRef, photoBlob, { contentType: 'image/jpeg' });
     const photoURL = await getDownloadURL(photoStorageRef);
@@ -293,6 +362,7 @@ export class FirebaseBackend implements Backend {
 
     const submissionData = {
       userId: uid,
+      semesterId: SEMESTER_ID,
       week,
       goalVersion: profile.currentGoalVersion,
       goalSnapshot,
@@ -326,6 +396,7 @@ export class FirebaseBackend implements Backend {
       const completedAfter = (await this.getMySubmissions(uid)).length;
       await setDoc(doc(this.db, 'feedPosts', feedId), {
         anonName: profile.anonName,
+        semesterId: SEMESTER_ID,
         week,
         reflection: reflection.trim(),
         photoURL: feedPhotoURL,

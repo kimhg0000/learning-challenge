@@ -10,6 +10,15 @@ export const TOTAL_WEEKS = 15;
 export const PROGRAM_START = new Date('2026-09-07T00:00:00+09:00'); // Monday of week 1, KST
 export const PROGRAM_END = new Date('2026-12-20T23:59:59+09:00'); // Sunday of week 15, KST
 
+// Every submission, feed post, and student roster entry is stamped with this
+// on creation and every admin/feed query filters by it, so running this app
+// again for a later semester (new SEMESTER_ID + new PROGRAM_START/END here
+// and in firestore.rules) never mixes a past semester's data into the
+// current one. Past-semester data is never deleted by changing this — it
+// just stops appearing in the current dashboard/feed. Bump it once per
+// semester, alongside PROGRAM_START/PROGRAM_END above and in firestore.rules.
+export const SEMESTER_ID = '2026-fall';
+
 export const WEEKDAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 export const DURATION_OPTIONS = [30, 45, 60, 75, 90, 105, 120];
 export const XP_PER_COMPLETION = 100;

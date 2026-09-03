@@ -1,10 +1,15 @@
 import './styles.css';
+import { stripPrototypeOnlyUiInProduction } from './ui/productionGuard';
 import { populateSelectors } from './ui/selectors';
 import { initAuthEvents } from './ui/auth';
 import { initModalEvents } from './ui/modals';
 import { initAdminEvents } from './ui/screens/admin';
 import { registerTabChangeHandler, toast } from './ui/dom';
 import { onTabActivated } from './ui/refresh';
+
+// Must run before any other UI module renders into or reveals prototype-only
+// elements (see productionGuard.ts for why cosmetic hiding isn't enough).
+stripPrototypeOnlyUiInProduction();
 
 populateSelectors();
 registerTabChangeHandler((tab) => void onTabActivated(tab));

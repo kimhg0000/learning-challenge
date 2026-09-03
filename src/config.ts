@@ -28,3 +28,10 @@ export function isFirebaseConfigValid(): boolean {
 // env var in a real deploy never silently exposes the demo/test UI to students.
 export const PROTOTYPE_MODE: boolean = env.VITE_PROTOTYPE_MODE === 'true'
   || (env.VITE_PROTOTYPE_MODE === undefined && env.DEV === true);
+
+// Dev-only escape hatch: real FirebaseBackend + real firestore.rules/
+// storage.rules, pointed at a local `npm run rules:emulators` instead of a
+// real project. See backend/index.ts. Never meaningful when PROTOTYPE_MODE
+// is true (prototype mode takes priority), and no production deploy sets
+// this, so it can never reach real students.
+export const USE_FIREBASE_EMULATOR: boolean = env.VITE_USE_FIREBASE_EMULATOR === 'true';

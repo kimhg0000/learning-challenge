@@ -2,8 +2,11 @@ import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { getBytes, ref, uploadBytes } from 'firebase/storage';
+import { SEMESTER_ID } from '../../src/constants';
 
-const PROJECT_ID = 'learning-challenge-rules-test';
+// Must match the --project flag "rules:test" passes to `firebase emulators:exec`
+// (see package.json and firestore.rules.test.ts for why).
+const PROJECT_ID = 'demo-learning-challenge';
 const STUDENT_A = { uid: 'student-a', email: 'a@student.example' };
 const STUDENT_B = { uid: 'student-b', email: 'b@student.example' };
 const INSTRUCTOR = { uid: 'instructor-1', email: 'prof@univ.example' };
@@ -47,46 +50,46 @@ async function seedInstructorAllowlist() {
   });
 }
 
-describe('submissions/{uid}/{fileName}', () => {
+describe('submissions/{uid}/{semesterId}/{fileName}', () => {
   it('a student can upload their own proof photo', async () => {
     const storage = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).storage();
-    await assertSucceeds(uploadBytes(ref(storage, `submissions/${STUDENT_A.uid}/week1.jpg`), tinyJpeg));
+    await assertSucceeds(uploadBytes(ref(storage, `submissions/${STUDENT_A.uid}/${SEMESTER_ID}/week1.jpg`), tinyJpeg));
   });
 
   it('a student cannot upload into another student\'s submissions folder', async () => {
     const storage = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).storage();
-    await assertFails(uploadBytes(ref(storage, `submissions/${STUDENT_B.uid}/week1.jpg`), tinyJpeg));
+    await assertFails(uploadBytes(ref(storage, `submissions/${STUDENT_B.uid}/${SEMESTER_ID}/week1.jpg`), tinyJpeg));
   });
 
   it('rejects a non-image upload', async () => {
     const storage = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).storage();
-    await assertFails(uploadBytes(ref(storage, `submissions/${STUDENT_A.uid}/week1.jpg`), notAnImage));
+    await assertFails(uploadBytes(ref(storage, `submissions/${STUDENT_A.uid}/${SEMESTER_ID}/week1.jpg`), notAnImage));
   });
 
   it('a student can read back their own proof photo', async () => {
     const storage = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).storage();
-    const fileRef = ref(storage, `submissions/${STUDENT_A.uid}/week1.jpg`);
+    const fileRef = ref(storage, `submissions/${STUDENT_A.uid}/${SEMESTER_ID}/week1.jpg`);
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await uploadBytes(ref(ctx.storage(), `submissions/${STUDENT_A.uid}/week1.jpg`), tinyJpeg);
+      await uploadBytes(ref(ctx.storage(), `submissions/${STUDENT_A.uid}/${SEMESTER_ID}/week1.jpg`), tinyJpeg);
     });
     await assertSucceeds(getBytes(fileRef));
   });
 
   it('a student cannot read another student\'s proof photo', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await uploadBytes(ref(ctx.storage(), `submissions/${STUDENT_B.uid}/week1.jpg`), tinyJpeg);
+      await uploadBytes(ref(ctx.storage(), `submissions/${STUDENT_B.uid}/${SEMESTER_ID}/week1.jpg`), tinyJpeg);
     });
     const storage = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).storage();
-    await assertFails(getBytes(ref(storage, `submissions/${STUDENT_B.uid}/week1.jpg`)));
+    await assertFails(getBytes(ref(storage, `submissions/${STUDENT_B.uid}/${SEMESTER_ID}/week1.jpg`)));
   });
 
   it('an instructor (in instructorAllowlist) can read any student\'s proof photo', async () => {
     await seedInstructorAllowlist();
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await uploadBytes(ref(ctx.storage(), `submissions/${STUDENT_A.uid}/week1.jpg`), tinyJpeg);
+      await uploadBytes(ref(ctx.storage(), `submissions/${STUDENT_A.uid}/${SEMESTER_ID}/week1.jpg`), tinyJpeg);
     });
     const storage = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email }).storage();
-    await assertSucceeds(getBytes(ref(storage, `submissions/${STUDENT_A.uid}/week1.jpg`)));
+    await assertSucceeds(getBytes(ref(storage, `submissions/${STUDENT_A.uid}/${SEMESTER_ID}/week1.jpg`)));
   });
 });
 

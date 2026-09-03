@@ -54,7 +54,8 @@ export interface Backend {
 
   listFeed(weekFilter: number): Promise<FeedPost[]>;
 
-  adminListStudents(): Promise<UserProfile[]>;
-  adminListAllSubmissions(): Promise<Submission[]>;
+  /** Defaults to the current semester (constants.ts SEMESTER_ID). A past semesterId can be passed once a semester-switcher UI exists — see the redesign backlog. */
+  adminListStudents(semesterId?: string): Promise<UserProfile[]>;
+  adminListAllSubmissions(semesterId?: string): Promise<Submission[]>;
   adminGetGoalHistory(uid: string): Promise<GoalVersion[]>;
 }

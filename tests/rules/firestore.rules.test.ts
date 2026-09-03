@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   assertFails,
   assertSucceeds,
@@ -7,10 +7,22 @@ import {
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc, deleteDoc, collection, getDocs, serverTimestamp, Timestamp } from 'firebase/firestore';
-import { PROGRAM_START, PROGRAM_END } from '../../src/constants';
+import { PROGRAM_START, PROGRAM_END, SEMESTER_ID } from '../../src/constants';
 import { getCurrentProgramWeek } from '../../src/utils/date';
 
-const PROJECT_ID = 'learning-challenge-rules-test';
+function subDocId(uid: string, week: number): string {
+  return `${uid}_${SEMESTER_ID}_w${week}`;
+}
+
+// Must match the --project flag "rules:test" passes to `firebase emulators:exec`
+// (see package.json). storage.rules's cross-service firestore.exists() calls
+// resolve against the CLI-invoked project, not whatever project id a test's
+// own initializeTestEnvironment() call happens to declare — a mismatch here
+// makes every instructor-via-Storage-rules check silently fail. Both rules
+// test files intentionally share this same project id, and vitest.rules.config.ts
+// forces them to run sequentially (fileParallelism: false) so their
+// beforeEach(clearFirestore/clearStorage) calls can't race each other.
+const PROJECT_ID = 'demo-learning-challenge';
 
 let testEnv: RulesTestEnvironment;
 
@@ -49,6 +61,11 @@ const INSTRUCTOR = { uid: 'instructor-1', email: 'prof@univ.example' };
 const WEEK_3_TOO_EARLY = Timestamp.fromDate(new Date('2026-09-20T10:00:00+09:00')); // still week 2
 const WEEK_3_TOO_LATE = Timestamp.fromDate(new Date('2026-10-01T10:00:00+09:00')); // already week 4
 
+// Used only for fixtures written via withSecurityRulesDisabled (seeding data
+// that a later, rules-checked call then reads or duplicates) — rules don't
+// run for those writes, so any valid Timestamp works here.
+const SEED_TIMESTAMP = Timestamp.now();
+
 // The emulator's request.time is the real host clock and cannot be mocked, so
 // a "does a submission succeed right now" test has to be evaluated against
 // whatever "now" actually is when the suite runs, using the exact same
@@ -65,6 +82,7 @@ function studentUserDoc(overrides: Partial<Record<string, unknown>> = {}) {
     characterType: 'rabbit',
     anonName: '도전자 100',
     role: 'student',
+    semesterId: SEMESTER_ID,
     currentGoalVersion: 1,
     goalText: '도서관에서 전공책을 60분 읽고 핵심을 3줄로 정리한다.',
     weekday: 3,
@@ -130,6 +148,20 @@ describe('users/{uid}', () => {
     await assertSucceeds(getDocs(collection(db, 'users')));
   });
 
+  it('an allowlisted instructor CAN create their own profile document with role:instructor', async () => {
+    await seedInstructorAllowlist();
+    const db = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email }).firestore();
+    await assertSucceeds(
+      setDoc(doc(db, 'users', INSTRUCTOR.uid), {
+        uid: INSTRUCTOR.uid, name: '교수자', studentId: '', email: INSTRUCTOR.email,
+        characterType: 'rabbit', anonName: '교수자', role: 'instructor', semesterId: SEMESTER_ID,
+        currentGoalVersion: 1, goalText: '교수자 계정은 개인 행동목표를 설정하지 않습니다.',
+        weekday: 1, startTime: '09:00', duration: 30,
+        goalCreatedAt: '2026-09-01T00:00:00.000Z', updatedAt: '2026-09-01T00:00:00.000Z', createdAt: '2026-09-01T00:00:00.000Z',
+      }),
+    );
+  });
+
   it('an account NOT in instructorAllowlist cannot impersonate an instructor by claiming role:instructor', async () => {
     const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
     // Even attempting to self-declare role:instructor is rejected outright (see previous test),
@@ -138,18 +170,19 @@ describe('users/{uid}', () => {
   });
 });
 
-describe('submissions/{uid}_w{week}', () => {
+describe('submissions/{uid}_{semesterId}_w{week}', () => {
   const goalSnapshot = { version: 1, goalText: '도서관에서 60분 읽고 정리한다', weekday: 3, startTime: '19:00', duration: 60 };
 
   function submissionPayload(overrides: Partial<Record<string, unknown>> = {}) {
     return {
       userId: STUDENT_A.uid,
+      semesterId: SEMESTER_ID,
       week: 3,
       goalVersion: 1,
       goalSnapshot,
       reflection: '이번 주에도 계획대로 실천했다.',
       photoURL: 'https://example.com/photo.jpg',
-      photoStoragePath: `submissions/${STUDENT_A.uid}/week3.jpg`,
+      photoStoragePath: `submissions/${STUDENT_A.uid}/${SEMESTER_ID}/week3.jpg`,
       submittedAt: new Date().toISOString(),
       serverCreatedAt: serverTimestamp(),
       clientPunctualClaim: false,
@@ -166,19 +199,19 @@ describe('submissions/{uid}_w{week}', () => {
       // for which a real-time submission can succeed — assert exactly that,
       // rather than skipping the scenario silently.
       await assertFails(
-        setDoc(doc(db, 'submissions', `${STUDENT_A.uid}_w1`), { ...submissionPayload(), week: 1 }),
+        setDoc(doc(db, 'submissions', subDocId(STUDENT_A.uid, 1)), { ...submissionPayload(), week: 1 }),
       );
       return;
     }
     await assertSucceeds(
-      setDoc(doc(db, 'submissions', `${STUDENT_A.uid}_w${currentWeek}`), { ...submissionPayload(), week: currentWeek }),
+      setDoc(doc(db, 'submissions', subDocId(STUDENT_A.uid, currentWeek)), { ...submissionPayload(), week: currentWeek }),
     );
   });
 
   it('rejects a submission dated before the week has started', async () => {
     const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
     await assertFails(
-      setDoc(doc(db, 'submissions', `${STUDENT_A.uid}_w3`), {
+      setDoc(doc(db, 'submissions', subDocId(STUDENT_A.uid, 3)), {
         ...submissionPayload(),
         serverCreatedAt: WEEK_3_TOO_EARLY,
       }),
@@ -188,7 +221,7 @@ describe('submissions/{uid}_w{week}', () => {
   it('rejects a submission dated after the week has ended', async () => {
     const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
     await assertFails(
-      setDoc(doc(db, 'submissions', `${STUDENT_A.uid}_w3`), {
+      setDoc(doc(db, 'submissions', subDocId(STUDENT_A.uid, 3)), {
         ...submissionPayload(),
         serverCreatedAt: WEEK_3_TOO_LATE,
       }),
@@ -197,47 +230,65 @@ describe('submissions/{uid}_w{week}', () => {
 
   it('rejects a second submission for the same student+week (idempotency)', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), 'submissions', `${STUDENT_A.uid}_w3`), {
+      await setDoc(doc(ctx.firestore(), 'submissions', subDocId(STUDENT_A.uid, 3)), {
         ...submissionPayload(),
-        serverCreatedAt: WEEK_3_INSIDE,
+        serverCreatedAt: SEED_TIMESTAMP,
       });
     });
     const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
-    await assertFails(setDoc(doc(db, 'submissions', `${STUDENT_A.uid}_w3`), submissionPayload()));
+    await assertFails(setDoc(doc(db, 'submissions', subDocId(STUDENT_A.uid, 3)), submissionPayload()));
   });
 
   it('rejects a submission a student tries to file under another student\'s uid', async () => {
     const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
     await assertFails(
-      setDoc(doc(db, 'submissions', `${STUDENT_B.uid}_w3`), submissionPayload({ userId: STUDENT_B.uid })),
+      setDoc(doc(db, 'submissions', subDocId(STUDENT_B.uid, 3)), submissionPayload({ userId: STUDENT_B.uid })),
     );
   });
 
   it('a submission can never be updated or deleted once created (immutable audit trail)', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), 'submissions', `${STUDENT_A.uid}_w3`), submissionPayload());
+      await setDoc(doc(ctx.firestore(), 'submissions', subDocId(STUDENT_A.uid, 3)), submissionPayload());
     });
     const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
-    await assertFails(setDoc(doc(db, 'submissions', `${STUDENT_A.uid}_w3`), submissionPayload({ reflection: 'edited' })));
-    await assertFails(deleteDoc(doc(db, 'submissions', `${STUDENT_A.uid}_w3`)));
+    await assertFails(setDoc(doc(db, 'submissions', subDocId(STUDENT_A.uid, 3)), submissionPayload({ reflection: 'edited' })));
+    await assertFails(deleteDoc(doc(db, 'submissions', subDocId(STUDENT_A.uid, 3))));
   });
 
   it('a student cannot read another student\'s submission', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), 'submissions', `${STUDENT_B.uid}_w3`), submissionPayload({ userId: STUDENT_B.uid }));
+      await setDoc(doc(ctx.firestore(), 'submissions', subDocId(STUDENT_B.uid, 3)), submissionPayload({ userId: STUDENT_B.uid }));
     });
     const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
-    await assertFails(getDoc(doc(db, 'submissions', `${STUDENT_B.uid}_w3`)));
+    await assertFails(getDoc(doc(db, 'submissions', subDocId(STUDENT_B.uid, 3))));
+  });
+
+  it('a student CAN get() their own not-yet-submitted week (exists:false, not permission-denied) — this is what getMySubmissions() relies on', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    const snap = await assertSucceeds(getDoc(doc(db, 'submissions', subDocId(STUDENT_A.uid, 7))));
+    expect(snap.exists()).toBe(false);
+  });
+
+  it('a student CANNOT get() a non-existent id even when guessing another student\'s uid prefix', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await assertFails(getDoc(doc(db, 'submissions', subDocId(STUDENT_B.uid, 7))));
   });
 
   it('an instructor can read any submission and list all submissions', async () => {
     await seedInstructorAllowlist();
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), 'submissions', `${STUDENT_A.uid}_w3`), submissionPayload());
+      await setDoc(doc(ctx.firestore(), 'submissions', subDocId(STUDENT_A.uid, 3)), submissionPayload());
     });
     const db = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email }).firestore();
-    await assertSucceeds(getDoc(doc(db, 'submissions', `${STUDENT_A.uid}_w3`)));
+    await assertSucceeds(getDoc(doc(db, 'submissions', subDocId(STUDENT_A.uid, 3))));
     await assertSucceeds(getDocs(collection(db, 'submissions')));
+  });
+
+  it('rejects a submission whose id claims a different semester than the semesterId field', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await assertFails(
+      setDoc(doc(db, 'submissions', `${STUDENT_A.uid}_2099-spring_w3`), submissionPayload({ semesterId: '2099-spring' })),
+    );
   });
 });
 
@@ -247,6 +298,7 @@ describe('feedPosts/{feedId}', () => {
     await assertFails(
       setDoc(doc(db, 'feedPosts', 'feed-1'), {
         anonName: '도전자 100',
+        semesterId: SEMESTER_ID,
         week: 3,
         reflection: '가짜 피드 글',
         photoURL: 'https://example.com/x.jpg',
@@ -261,11 +313,11 @@ describe('feedPosts/{feedId}', () => {
   it('accepts a feed post created alongside a real, already-owned private submission', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'users', STUDENT_A.uid), studentUserDoc({ anonName: '도전자 100' }));
-      await setDoc(doc(ctx.firestore(), 'submissions', `${STUDENT_A.uid}_w3`), {
-        userId: STUDENT_A.uid, week: 3, goalVersion: 1,
+      await setDoc(doc(ctx.firestore(), 'submissions', subDocId(STUDENT_A.uid, 3)), {
+        userId: STUDENT_A.uid, semesterId: SEMESTER_ID, week: 3, goalVersion: 1,
         goalSnapshot: { version: 1, goalText: 'x', weekday: 3, startTime: '19:00', duration: 60 },
         reflection: 'x'.repeat(20), photoURL: 'https://example.com/x.jpg', photoStoragePath: '',
-        submittedAt: new Date().toISOString(), serverCreatedAt: WEEK_3_INSIDE,
+        submittedAt: new Date().toISOString(), serverCreatedAt: SEED_TIMESTAMP,
         clientPunctualClaim: false, status: 'submitted',
       });
     });
@@ -273,6 +325,7 @@ describe('feedPosts/{feedId}', () => {
     await assertSucceeds(
       setDoc(doc(db, 'feedPosts', 'feed-1'), {
         anonName: '도전자 100',
+        semesterId: SEMESTER_ID,
         week: 3,
         reflection: '이번 주에도 실천했다.',
         photoURL: 'https://example.com/feed.jpg',
@@ -287,11 +340,11 @@ describe('feedPosts/{feedId}', () => {
   it('rejects a feed post that smuggles in an identifying field like studentId or email', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'users', STUDENT_A.uid), studentUserDoc({ anonName: '도전자 100' }));
-      await setDoc(doc(ctx.firestore(), 'submissions', `${STUDENT_A.uid}_w3`), {
-        userId: STUDENT_A.uid, week: 3, goalVersion: 1,
+      await setDoc(doc(ctx.firestore(), 'submissions', subDocId(STUDENT_A.uid, 3)), {
+        userId: STUDENT_A.uid, semesterId: SEMESTER_ID, week: 3, goalVersion: 1,
         goalSnapshot: { version: 1, goalText: 'x', weekday: 3, startTime: '19:00', duration: 60 },
         reflection: 'x'.repeat(20), photoURL: 'https://example.com/x.jpg', photoStoragePath: '',
-        submittedAt: new Date().toISOString(), serverCreatedAt: WEEK_3_INSIDE,
+        submittedAt: new Date().toISOString(), serverCreatedAt: SEED_TIMESTAMP,
         clientPunctualClaim: false, status: 'submitted',
       });
     });
@@ -299,6 +352,7 @@ describe('feedPosts/{feedId}', () => {
     await assertFails(
       setDoc(doc(db, 'feedPosts', 'feed-1'), {
         anonName: '도전자 100',
+        semesterId: SEMESTER_ID,
         studentId: '1234567', // must never be accepted here
         week: 3,
         reflection: '이번 주에도 실천했다.',
@@ -314,8 +368,8 @@ describe('feedPosts/{feedId}', () => {
   it('feed posts are readable by any signed-in user (the whole point of the anonymous feed)', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'feedPosts', 'feed-1'), {
-        anonName: '도전자 100', week: 3, reflection: 'x', photoURL: 'https://example.com/x.jpg',
-        characterType: 'rabbit', characterStage: 1, punctualClaim: false, createdAt: WEEK_3_INSIDE,
+        anonName: '도전자 100', semesterId: SEMESTER_ID, week: 3, reflection: 'x', photoURL: 'https://example.com/x.jpg',
+        characterType: 'rabbit', characterStage: 1, punctualClaim: false, createdAt: SEED_TIMESTAMP,
       });
     });
     const db = testEnv.authenticatedContext(STUDENT_B.uid, { email: STUDENT_B.email }).firestore();

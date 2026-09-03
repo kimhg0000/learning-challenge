@@ -3,7 +3,11 @@ rules_version = '2';
 // ---------------------------------------------------------------------------
 // 15-week learning challenge — Storage security rules.
 //
-// - submissions/{uid}/weekN.jpg  — private proof photo, owner + instructor only.
+// - submissions/{uid}/{semesterId}/weekN.jpg — private proof photo, owner +
+//                                  instructor only. Namespaced by semester
+//                                  (see firestore.rules currentSemester())
+//                                  so a reused account in a later semester
+//                                  can never overwrite a past semester's photo.
 // - feedPhotos/{feedId}.jpg      — a second copy uploaded for the anonymous
 //                                  feed, named by a random id (never the uid),
 //                                  so the public feed never leaks a uid via
@@ -35,7 +39,7 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
-    match /submissions/{uid}/{fileName} {
+    match /submissions/{uid}/{semesterId}/{fileName} {
       allow read: if isSignedIn() && (request.auth.uid == uid || isInstructor());
       allow write: if isSignedIn() && request.auth.uid == uid && isReasonableImage();
       allow delete: if false;

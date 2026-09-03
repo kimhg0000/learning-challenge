@@ -23,14 +23,28 @@ function goalHistoryHtml(history: GoalVersion[]): string {
     .join('');
 }
 
-export async function loadAdminDashboard() {
+// Every student + every submission for the whole semester, cached for the
+// lifetime of this admin session. Switching the week dropdown, or the
+// refresh-on-tab-activation that used to happen on every visit to the
+// 관리 tab, re-reads all ~1,500 submission documents from Firestore for no
+// reason — the same two full-collection reads regardless of which single
+// week the instructor actually wants to look at. Only an explicit
+// "새로고침" click (or the very first load) re-fetches; switching weeks
+// just re-renders the already-loaded data.
+let dashboardCache: { students: UserProfile[]; allSubs: Submission[] } | null = null;
+
+export async function loadAdminDashboard(options: { forceRefresh?: boolean } = {}) {
   const week = Number(els.adminWeekSelect.value || 1) || 1;
   els.adminWeekSelect.value = String(week);
   const { start, end } = getWeekBounds(week);
   els.adminWeekDate.textContent = `${formatDate(start)} 00:00 ~ ${formatDate(end)} 23:59 · 이 기간 안에는 어느 요일에 제출해도 정상 완료입니다.`;
 
   try {
-    const [students, allSubs] = await Promise.all([backend.adminListStudents(), backend.adminListAllSubmissions()]);
+    if (options.forceRefresh || !dashboardCache) {
+      const [students, allSubs] = await Promise.all([backend.adminListStudents(), backend.adminListAllSubmissions()]);
+      dashboardCache = { students, allSubs };
+    }
+    const { students, allSubs } = dashboardCache;
     const weekSubs = allSubs.filter((s) => Number(s.week) === week);
     renderAdminRows(students, weekSubs, allSubs);
   } catch (err) {
@@ -86,8 +100,8 @@ function renderAdminRows(students: UserProfile[], weekSubs: Submission[], allSub
 }
 
 export function initAdminEvents() {
-  els.adminWeekSelect.onchange = () => void loadAdminDashboard();
-  els.adminRefreshBtn.onclick = () => void loadAdminDashboard();
+  els.adminWeekSelect.onchange = () => void loadAdminDashboard(); // cached — just re-renders for the newly selected week
+  els.adminRefreshBtn.onclick = () => void loadAdminDashboard({ forceRefresh: true });
   els.adminExportBtn.onclick = () => void exportExcel();
 }
 

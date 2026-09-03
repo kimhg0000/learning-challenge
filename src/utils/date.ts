@@ -18,17 +18,23 @@ export function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
-/** Test-only override hook, set by the prototype test-week picker. Never read in production mode. */
+/**
+ * Test-only override hook. Not wired to any UI control — set it directly
+ * (`globalThis.__QUEST_TEST_NOW = '2026-09-09T12:00:00+09:00'`) from a test
+ * or devtools console to make date-dependent code (submission windows,
+ * current-week calculation) behave as if "now" were a different real
+ * instant. Used by tests/integration, where FirebaseBackend's real
+ * Firestore server timestamp still reflects the actual clock — this only
+ * overrides the CLIENT-side window pre-check in submitWeek(), it does not
+ * and cannot affect what a security rule sees as request.time.
+ */
 declare global {
-  interface Window {
-    __QUEST_TEST_NOW?: string | number;
-  }
+  // eslint-disable-next-line no-var
+  var __QUEST_TEST_NOW: string | number | undefined;
 }
 
 export function now(): Date {
-  return typeof window !== 'undefined' && window.__QUEST_TEST_NOW
-    ? new Date(window.__QUEST_TEST_NOW)
-    : new Date();
+  return globalThis.__QUEST_TEST_NOW ? new Date(globalThis.__QUEST_TEST_NOW) : new Date();
 }
 
 export interface WeekBounds {

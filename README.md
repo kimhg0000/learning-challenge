@@ -48,6 +48,7 @@ src/
 tests/
   unit/                Vitest, no network/emulator needed
   rules/               Firestore/Storage security rules tests (needs emulators — see tests/rules/README.md)
+  integration/         Real FirebaseBackend against the emulator (races, upload failures, 100x15 scale)
 firestore.rules / storage.rules / firestore.indexes.json / firebase.json
 ```
 
@@ -94,28 +95,57 @@ with real student data and is not a substitute for it.
 ## Testing
 
 ```
-npm test              # unit tests — pure logic, no network, runs anywhere
-npm run rules:test     # Firestore/Storage security rules, needs Java + Firebase CLI (see tests/rules/README.md)
-npm run build          # typecheck + production build
+npm test                 # unit tests — pure logic, no network, runs anywhere
+npm run rules:test        # Firestore/Storage security rules (34 tests), needs Java 21+ + Firebase CLI
+npm run integration:test  # real FirebaseBackend against the emulator — races, upload failures, 100x15 scale
+npm run build             # typecheck + production build
 ```
 
-`npm run rules:test` boots the Firebase Local Emulator Suite, runs the rules
-tests against it, and tears it down — no real project or network access
-needed, just a local JDK 17+.
+Both `rules:test` and `integration:test` boot the Firebase Local Emulator
+Suite, run against it, and tear it down — no real project or network access
+needed, just a local JDK 21+ (`winget install Microsoft.OpenJDK.21` /
+`brew install openjdk@21`). `integration:test` drives the real
+`FirebaseBackend` class (real Auth/Firestore/Storage SDK calls, real
+security rules) the same way the deployed app does, to catch bugs pure
+rules-unit-tests can't — see `tests/integration/helpers.ts` for how it
+relaxes only the calendar-window check (which is separately exhaustively
+tested in `tests/rules`) so the suite works regardless of what day it's
+actually run.
+
+You can also point an interactive `npm run dev` at the same local emulator
+instead of the IndexedDB prototype backend: run `npm run rules:emulators` in
+one terminal, then in another, `VITE_PROTOTYPE_MODE=false` +
+`VITE_USE_FIREBASE_EMULATOR=true` in `.env` and `npm run dev` — this exercises
+the real, rules-enforced student/instructor flow end to end on localhost,
+with zero real Firebase project required.
 
 ## Data model (Firestore)
 
+Every document below also carries a `semesterId` (see `constants.ts
+SEMESTER_ID`, e.g. `"2026-fall"`). All admin/feed queries filter by the
+*current* semester, so re-running this app for a later semester never mixes
+a past semester's roster or submissions into the current dashboard/feed —
+see "Running this for a new semester" below.
+
 - `users/{uid}` — profile + the *currently active* goal (denormalized for
-  fast reads). `role` is present for display only; real authorization never
-  trusts it (see below).
+  fast reads). `role` and `characterType` are permanent once set (rules
+  reject any change); `role` is also never trusted for authorization on its
+  own — see "Authorization model" below.
 - `users/{uid}/goalVersions/{n}` — append-only version history. Editing a
   goal never overwrites this; it adds version `n+1` and bumps
   `users/{uid}.currentGoalVersion` in one atomic batch.
-- `submissions/{uid}_w{week}` — one document per student per week, by
-  construction (the deterministic ID *is* the de-dup mechanism). Immutable
-  once created. Carries a full snapshot of the goal that was active at
-  submission time (`goalSnapshot`), so editing a goal later never changes
-  how a past week is displayed.
+- `submissions/{uid}_{semesterId}_w{week}` — one document per student per
+  semester per week, by construction (the deterministic id *is* the de-dup
+  mechanism, and re-verified inside a transaction against concurrent
+  double-submits). Immutable once created. Carries a full snapshot of the
+  goal that was active at submission time (`goalSnapshot`), so editing a
+  goal later never changes how a past week is displayed. A student fetches
+  their own submissions by directly `get()`-ing all 15 possible week ids
+  rather than running a `where(userId==)` query — Firestore can't express
+  "list only documents where a field matches the caller" as a security rule
+  for a top-level collection query, so `list` on this collection is
+  instructor-only and a student's own reads go through the ordinary `get`
+  rule (owner-or-instructor) instead, once per week id.
 - `feedPosts/{randomId}` — the anonymous feed. Contains no uid, email, name,
   or student ID — only `anonName` (a nickname generated once at signup and
   stored on the profile, never derived from the uid at read time).
@@ -123,6 +153,28 @@ needed, just a local JDK 17+.
   lowercase email = that account is an instructor. Never written by any
   client role; the course owner manages it directly in the Firebase
   Console.
+
+## Running this for a new semester
+
+1. Pick a new value for `SEMESTER_ID` in `src/constants.ts` (e.g.
+   `"2027-spring"`), and update `PROGRAM_START`/`PROGRAM_END` there.
+2. Update the matching `currentSemester()` and `programStart()` in
+   `firestore.rules` (and the calendar constant in `storage.rules` if you
+   changed it), then `npx firebase deploy --only firestore:rules,storage`.
+3. Deploy the app with the new constants. New signups get the new
+   `semesterId` automatically; nothing about a past semester's data is
+   touched or deleted.
+4. To let the instructor look at a *past* semester's roster/submissions:
+   the data is all still there (Firestore never deletes it), queryable by
+   filtering on the old `semesterId` directly in the Firebase Console, or
+   by temporarily building with the old `SEMESTER_ID`. There's no
+   in-app semester switcher yet — see the redesign backlog.
+5. Before wiping anything: export a final Excel from the admin dashboard,
+   and consider a Firestore export (`gcloud firestore export`) as a durable
+   backup. Storage photos for a past semester can simply be left in place
+   (a full semester's worth of compressed proof photos is a few hundred MB
+   at most — well under Spark's free tier) unless you specifically want to
+   reclaim the space.
 
 ## Authorization model
 
@@ -147,18 +199,37 @@ once created (audit-trail immutability).
 | Test-photo generator, punctual-badge override checkbox | Shown | Not rendered at all |
 
 Set `VITE_PROTOTYPE_MODE=false` in Netlify before the real semester starts.
-The prototype UI branches are static `if (PROTOTYPE_MODE)` checks, so the
-bundler removes that code from a production build rather than just hiding it.
+The actual production/prototype gate is `src/ui/productionGuard.ts`, which
+permanently removes every prototype-only DOM element (체험하기 buttons, the
+test-week picker, the test-photo generator, the punctual-badge override
+checkbox) from the page the moment the app boots when
+`VITE_PROTOTYPE_MODE=false` — not just CSS-hiding them, which a student could
+undo from devtools. Verified by loading a `VITE_PROTOTYPE_MODE=false` build
+and confirming `document.getElementById(...)` returns `null` for all four.
+(The `LocalBackend` class's *code* still ships in the production JS bundle —
+esbuild can't prove the runtime env check dead — but it's inert: nothing in
+a production build ever constructs or calls it.)
 
-## Known limitations (see also the session's final report)
+## Known limitations
 
-- No Cloud Functions means a few cross-document invariants (e.g. "a goal
-  version bump always has a matching history document") are enforced by
-  this app's own client code and Firestore batch atomicity, not by security
-  rules alone. A student would have to hand-craft raw SDK calls to corrupt
-  only their *own* goal-history display this way — low severity, documented
-  rather than solved with added infrastructure cost.
+- No Cloud Functions means one cross-document invariant isn't enforced by
+  security rules alone: a student's own `users/{uid}.currentGoalVersion`
+  could in principle be bumped via a hand-crafted SDK call without also
+  creating the matching `goalVersions` document in the same batch (the app's
+  own code always does both atomically; only a deliberately adversarial
+  direct API call could skip it). The blast radius is limited to that
+  student's own goal-history display — it can't affect anyone else's data,
+  forge a submission, or escalate privilege — so this is documented rather
+  than solved with added infrastructure cost.
 - If a photo upload succeeds but the immediately-following Firestore write
   fails (rare — a network drop in that exact instant), the photo is orphaned
-  in Storage with no document pointing at it. Harmless (a few KB, never
-  shown anywhere) and not worth a cleanup job at this scale.
+  in Storage with no document pointing at it. Verified (via
+  `tests/integration`) that the reverse — a Firestore doc with no photo —
+  can never happen, since the write only happens after upload succeeds.
+  Harmless (a few hundred KB, never shown anywhere) and not worth a cleanup
+  job at this scale.
+- No in-app UI yet to let an instructor browse a *past* semester once a new
+  one starts (the data model supports it — see "Running this for a new
+  semester" — `adminListStudents`/`adminListAllSubmissions` already accept
+  an optional `semesterId`; only the picker UI is missing). Tracked in the
+  redesign backlog.
