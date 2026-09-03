@@ -19,6 +19,7 @@
   for = "/manifest.webmanifest"
   [headers.values]
     Cache-Control = "no-cache"
+    Content-Type = "application/manifest+json"
 
 # Vite fingerprints filenames in /assets, so these can be cached forever.
 [[headers]]

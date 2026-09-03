@@ -22,3 +22,6 @@ storage-debug.log
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local Netlify folder
+.netlify
