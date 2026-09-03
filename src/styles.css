@@ -232,6 +232,11 @@ h3{font-size:15px;font-weight:800}
 .admin-search .ico{color:var(--text-3)}
 .admin-search-input{border:0;background:none;outline:none;flex:1;font-size:13.5px;min-width:0}
 .admin-export-btn{flex:0 0 auto;padding:0 14px;min-height:42px;font-size:12.5px}
+.feed-search{margin-bottom:12px}
+.instructor-feed-name{cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-decoration-color:var(--accent);text-underline-offset:3px}
+.instructor-feed-name:hover{color:var(--accent)}
+.feed-student-id{font-size:11px;color:var(--text-2);margin-top:1px}
+.feed-view-all{font-size:11px;font-weight:700;color:var(--accent);background:none;border:0;padding:0}
 .admin-filter{display:flex;gap:6px;margin-top:9px;overflow-x:auto;scrollbar-width:none}
 .admin-filter::-webkit-scrollbar{display:none}
 .admin-filter-chip{flex:0 0 auto;border:1px solid var(--border);background:var(--surface);color:var(--text-2);font-size:12px;font-weight:700;padding:7px 12px;border-radius:999px;min-height:32px}

@@ -12,8 +12,9 @@ import type { GoalVersion, Submission, UserProfile } from '../../types';
 import { els, toast } from '../dom';
 import { getWeekBounds } from '../../utils/date';
 import { characterMarkup } from '../character';
+import { getAdminData } from '../adminData';
 
-function goalHistoryHtml(history: GoalVersion[]): string {
+export function goalHistoryHtml(history: GoalVersion[]): string {
   if (!history.length) return '<div class="admin-history-item muted">이력 없음</div>';
   const latest = Number(history[history.length - 1]?.version || history.length);
   return [...history]
@@ -26,15 +27,6 @@ function goalHistoryHtml(history: GoalVersion[]): string {
     .join('');
 }
 
-// Every student + every submission for the whole semester, cached for the
-// lifetime of this admin session. Switching the week dropdown, or the
-// refresh-on-tab-activation that used to happen on every visit to the
-// 관리 tab, re-reads all ~1,500 submission documents from Firestore for no
-// reason — the same two full-collection reads regardless of which single
-// week the instructor actually wants to look at. Only an explicit
-// "새로고침" click (or the very first load) re-fetches; switching weeks
-// just re-renders the already-loaded data.
-let dashboardCache: { students: UserProfile[]; allSubs: Submission[] } | null = null;
 let searchQuery = '';
 type StatusFilter = 'all' | 'submitted' | 'missing' | 'punctual';
 let statusFilter: StatusFilter = 'all';
@@ -46,11 +38,7 @@ export async function loadAdminDashboard(options: { forceRefresh?: boolean } = {
   els.adminWeekDate.textContent = `${formatDate(start)} 00:00 ~ ${formatDate(end)} 23:59 · 이 기간 안에는 어느 요일에 제출해도 정상 완료입니다.`;
 
   try {
-    if (options.forceRefresh || !dashboardCache) {
-      const [students, allSubs] = await Promise.all([backend.adminListStudents(), backend.adminListAllSubmissions()]);
-      dashboardCache = { students, allSubs };
-    }
-    const { students, allSubs } = dashboardCache;
+    const { students, allSubs } = await getAdminData({ forceRefresh: options.forceRefresh });
     const weekSubs = allSubs.filter((s) => Number(s.week) === week);
     renderAdminRows(students, weekSubs, allSubs);
   } catch (err) {
@@ -135,11 +123,11 @@ function historyWeekCardHtml(row: ReturnType<typeof computeStudentWeekRows>[numb
   return `<div class="history-week-item submitted"><div class="history-week-card submitted"><div class="history-week-top"><b>WEEK ${row.week}</b><span class="tag green">제출${badge ? ' · ⏰ 정시' : ''}</span></div><div class="history-week-body">${imgWithFallback(s.photoURL, `${row.week}주차 인증샷`, '')}<div><div class="reflection-label">성찰 및 다짐</div><p>${safeText(s.reflection || '(작성된 성찰이 없습니다)')}</p><div class="helper">제출 당시 목표 v${Number(s.goalVersion || 1)} · ${safeText(s.goalSnapshot?.goalText || '목표 기록 없음')}</div><div class="helper">${safeText(formatDateTime(new Date(s.submittedAt)))}</div></div></div></div></div>`;
 }
 
-async function openStudentHistory(uid: string) {
-  if (!dashboardCache) return;
-  const student = dashboardCache.students.find((s) => s.uid === uid);
+export async function openStudentHistory(uid: string) {
+  const { students, allSubs } = await getAdminData();
+  const student = students.find((s) => s.uid === uid);
   if (!student) return;
-  const userSubs = dashboardCache.allSubs.filter((s) => s.userId === uid);
+  const userSubs = allSubs.filter((s) => s.userId === uid);
   const punctualTotal = userSubs.filter((s) => isPunctualSubmission(s)).length;
   const growth = getGrowthState(userSubs.length);
 
@@ -183,7 +171,7 @@ async function exportExcel() {
   const originalText = els.adminExportBtn.textContent;
   els.adminExportBtn.textContent = '내보내는 중...';
   try {
-    const [students, allSubs] = await Promise.all([backend.adminListStudents(), backend.adminListAllSubmissions()]);
+    const { students, allSubs } = await getAdminData({ forceRefresh: true });
     await downloadSemesterExcel(students, allSubs);
     toast('Excel 파일을 내려받았습니다.', 'success');
   } catch (err) {

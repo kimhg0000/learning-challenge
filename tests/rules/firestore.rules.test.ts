@@ -274,6 +274,11 @@ describe('submissions/{uid}_{semesterId}_w{week}', () => {
     await assertFails(getDoc(doc(db, 'submissions', subDocId(STUDENT_B.uid, 7))));
   });
 
+  it('a student CANNOT list the submissions collection (must fetch their own by direct id, never a bare query) — this is the query the instructor real-name feed relies on being blocked for non-instructors', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await assertFails(getDocs(collection(db, 'submissions')));
+  });
+
   it('an instructor can read any submission and list all submissions', async () => {
     await seedInstructorAllowlist();
     await testEnv.withSecurityRulesDisabled(async (ctx) => {

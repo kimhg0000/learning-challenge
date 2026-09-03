@@ -32,6 +32,8 @@ export const els = {
   growthXpText: $('growth-xp-text'), growthXpFill: $('growth-xp-fill'), growthNext: $('growth-next'),
 
   weekList: $('week-list'), feedList: $('feed-list'), feedWeekFilter: $('feed-week-filter'),
+  feedSearchWrap: $('feed-search-wrap'), feedSearchInput: $<HTMLInputElement>('feed-search-input'),
+  feedNotice: $('feed-notice'), feedNoticeText: $('feed-notice-text'),
 
   profileAvatar: $('profile-avatar'), profileNameView: $('profile-name-view'), profileIdView: $('profile-id-view'),
   profileEmailView: $('profile-email-view'), profileAnonView: $('profile-anon-view'), profileCharacterView: $('profile-character-view'),
