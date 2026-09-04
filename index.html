@@ -104,20 +104,16 @@
         <div class="prototype-row"><div class="field"><label for="test-week-select">테스트할 주차</label><select id="test-week-select" class="select"></select></div><span class="prototype-chip">일정 제한 해제</span></div>
       </div>
 
-      <div class="character-strip" id="character-growth-panel">
-        <div id="growth-avatar" class="character-strip-avatar"></div>
-        <div class="character-strip-body">
-          <div class="character-strip-head">
-            <span id="growth-character-name" class="character-strip-name">나의 캐릭터</span>
-            <span id="growth-level" class="character-strip-level">Lv.1</span>
-          </div>
-          <div class="progress-track thin"><div id="growth-xp-fill" class="progress-fill" style="width:0%"></div></div>
-          <div class="character-strip-sub">
-            <span id="growth-stage-name">첫걸음</span>
-            <span id="growth-xp-text">0 XP</span>
-          </div>
+      <div class="growth-card" id="character-growth-panel">
+        <span id="growth-badge-count" class="badge-pill growth-card-badge">⏰ 0</span>
+        <div id="growth-avatar"></div>
+        <div class="growth-card-title">
+          <span id="growth-level" class="growth-card-level">Lv.1</span>
+          <span id="growth-stage-name" class="growth-card-stage">첫걸음</span>
         </div>
-        <span id="growth-badge-count" class="badge-pill">⏰ 0</span>
+        <span id="growth-character-name" class="growth-card-name">나의 캐릭터</span>
+        <div class="progress-track thin growth-card-track"><div id="growth-xp-fill" class="progress-fill" style="width:0%"></div></div>
+        <span id="growth-xp-text" class="growth-card-xp">0 XP</span>
       </div>
       <div id="growth-next" class="growth-note"></div>
 

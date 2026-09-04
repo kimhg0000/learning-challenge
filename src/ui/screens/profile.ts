@@ -31,7 +31,7 @@ export function renderProfile() {
     ? '—'
     : growth.next
       ? `${growth.next.minCompleted - doneCount}주 남음`
-      : '최종 성장형 도달';
+      : '습관 장인 도달';
   els.profileGoalView.textContent = instructor ? '교수자 계정은 개인 행동목표를 설정하지 않습니다.' : profile.goalText || '-';
   els.profileScheduleView.textContent = instructor ? '15주 전체 현황 관리' : formatGoalSchedule(profile);
 

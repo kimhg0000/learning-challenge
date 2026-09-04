@@ -139,15 +139,21 @@ h3{font-size:15px;font-weight:800}
 .home-hello{font-size:17px;font-weight:800;letter-spacing:-.01em}
 .home-hello span{color:var(--accent)}
 
-.character-strip{display:flex;align-items:center;gap:13px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:13px 15px;box-shadow:var(--shadow-xs);margin-bottom:6px}
-.character-strip-avatar .character-orb{width:56px;height:56px;border-radius:28%}
-.character-strip-avatar .animal{font-size:32px}
-.character-strip-avatar .evo-mark{width:18px;height:18px;font-size:10px}
-.character-strip-body{flex:1;min-width:0}
-.character-strip-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
-.character-strip-name{font-size:14px;font-weight:800}
-.character-strip-level{font-size:12px;font-weight:800;color:var(--accent)}
-.character-strip-sub{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-2);margin-top:6px}
+/* Growth card: the character is the visual centerpiece (per user feedback
+   that the previous compact horizontal strip made the app's core motivator
+   too small to register at a glance) — Stage/칭호/XP/next-growth text are
+   arranged around it, centered, in a still-clean, non-game-like card. */
+.growth-card{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:20px 18px 17px;box-shadow:var(--shadow-xs);margin-bottom:6px}
+#growth-avatar .character-orb{width:116px;height:116px;border-radius:26%}
+#growth-avatar .animal{font-size:66px}
+#growth-avatar .evo-mark{width:30px;height:30px;font-size:15px;right:-6px;bottom:-6px;border-width:2.5px}
+.growth-card-title{display:flex;align-items:baseline;justify-content:center;gap:7px;flex-wrap:wrap;margin-top:2px}
+.growth-card-level{font-size:13.5px;font-weight:800;color:var(--accent)}
+.growth-card-stage{font-size:17px;font-weight:800;letter-spacing:-.01em}
+.growth-card-name{font-size:11.5px;color:var(--text-2);font-weight:600}
+.growth-card-track{width:100%;max-width:240px;margin-top:5px}
+.growth-card-xp{font-size:11px;color:var(--text-2);font-weight:600}
+.growth-card-badge{position:absolute;top:14px;right:14px}
 .progress-track{height:6px;background:var(--surface-3);border-radius:99px;overflow:hidden;margin-top:8px}
 .progress-track.thin{height:5px;margin-top:7px}
 .progress-fill{height:100%;background:var(--accent);border-radius:99px;transition:width .3s ease}

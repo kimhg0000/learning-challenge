@@ -57,7 +57,7 @@ export const GROWTH_STAGES: GrowthStageDef[] = [
   { stage: 2, minCompleted: 3, minXp: 300, name: '습관 견습생', mark: '🎒' },
   { stage: 3, minCompleted: 6, minXp: 600, name: '집중 탐험가', mark: '✨' },
   { stage: 4, minCompleted: 10, minXp: 1000, name: '습관 수호자', mark: '⚡' },
-  { stage: 5, minCompleted: 15, minXp: 1500, name: '최종 성장형', mark: '👑' },
+  { stage: 5, minCompleted: 15, minXp: 1500, name: '습관 장인', mark: '👑' },
 ];
 
 // Animal type is chosen once at onboarding and is permanent thereafter

@@ -42,7 +42,7 @@ export function renderHome() {
   els.growthXpFill.style.width = `${growth.progress}%`;
   els.growthNext.textContent = growth.next
     ? `다음 성장까지 ${growth.next.minCompleted - doneCount}주 · 정시 배지는 별도로 누적됩니다.`
-    : '최종 성장형에 도달했습니다! 남은 주차까지 완주해보세요.';
+    : '습관 장인에 도달했습니다! 남은 주차까지 완주해보세요.';
 
   if (wState.status === 'done' && wState.sub) {
     const badge = isPunctualSubmission(wState.sub);

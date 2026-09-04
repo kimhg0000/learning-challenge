@@ -35,4 +35,9 @@ describe('getGrowthState', () => {
   it('xp is always completed * 100', () => {
     expect(getGrowthState(7).xp).toBe(700);
   });
+
+  it('Stage 5\'s user-facing label is "습관 장인", not the old system-sounding "최종 성장형"', () => {
+    expect(getGrowthState(15).name).toBe('습관 장인');
+    expect(getGrowthState(15).name).not.toBe('최종 성장형');
+  });
 });
