@@ -1,4 +1,5 @@
 import { getGrowthState } from './growth';
+import { authoritativeSubmissionDate } from './punctual';
 import type { CharacterType, Submission, UserProfile } from '../types';
 
 export interface InstructorFeedItem {
@@ -56,7 +57,10 @@ export function buildInstructorFeedItems(
   if (q) {
     items.sort((a, b) => Number(a.submission.week) - Number(b.submission.week));
   } else {
-    items.sort((a, b) => new Date(b.submission.submittedAt).getTime() - new Date(a.submission.submittedAt).getTime());
+    // Ordered by the server-confirmed submission instant, never the
+    // client-supplied submittedAt string a device's clock could misreport.
+    const time = (s: Submission) => (authoritativeSubmissionDate(s) ?? new Date(s.submittedAt)).getTime();
+    items.sort((a, b) => time(b.submission) - time(a.submission));
   }
   return items;
 }

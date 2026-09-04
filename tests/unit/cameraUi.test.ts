@@ -26,6 +26,16 @@ describe('submission modal: live camera removed, native-camera-app capture kept'
   });
 });
 
+describe('submission time is explained as server-confirmed submit time, not photo capture time', () => {
+  it('the submission modal tells students the recorded time is when the submission was sent, not when the photo was taken', () => {
+    expect(html).toContain('인증 시각은 사진을 제출한 시각을 기준으로 기록됩니다.');
+  });
+
+  it('the home screen explains the punctual badge rule without implying the photo\'s own timestamp is checked', () => {
+    expect(html).toContain('설정한 학습시간 내에 인증을 제출하면 정시 배지가 기록됩니다.');
+  });
+});
+
 describe('goal-edit screen is reachable only from 내 정보, with no route back to onboarding', () => {
   it('there is exactly one goal-back-btn, shared between onboarding and edit mode (auth.ts branches its behavior on state.editingGoal, not a second button)', () => {
     const matches = html.match(/id="goal-back-btn"/g) ?? [];

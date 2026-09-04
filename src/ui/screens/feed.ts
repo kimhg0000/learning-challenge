@@ -1,6 +1,6 @@
 import { TOTAL_WEEKS } from '../../constants';
 import { formatDateTime } from '../../utils/date';
-import { isPunctualSubmission } from '../../utils/punctual';
+import { authoritativeSubmissionDate, isPunctualSubmission } from '../../utils/punctual';
 import { safeText } from '../../utils/text';
 import { imgWithFallback } from '../../utils/imgFallback';
 import { buildInstructorFeedItems } from '../../utils/instructorFeed';
@@ -95,7 +95,9 @@ async function renderInstructorFeed() {
   els.feedList.innerHTML = items
     .map(({ uid, name, studentId, characterType, characterStage, submission: s }) => {
       const badge = isPunctualSubmission(s);
-      return `<article class="feed-card"><div class="feed-body" style="padding-bottom:0"><div class="feed-top"><div style="display:flex;align-items:center;gap:8px">${characterMarkupForStage(characterType, characterStage, 'small')}<div><div class="anon instructor-feed-name" data-history-uid="${safeText(uid)}">${safeText(name)}</div><div class="feed-student-id">${safeText(studentId)} · <button type="button" class="feed-view-all" data-view-all="${safeText(name)}">전체 보기</button></div></div></div><span class="tag accent">${Number(s.week)}주차</span></div></div>${imgWithFallback(s.photoURL, `${name} ${s.week}주차 인증샷`, 'feed-img')}<div class="feed-body"><div class="helper" style="margin:0 0 8px">제출 당시 목표 v${Number(s.goalVersion || 1)} · ${safeText(s.goalSnapshot?.goalText || '목표 기록 없음')}</div><div class="feed-reflection">${safeText(s.reflection || '(작성된 성찰이 없습니다)')}</div><div class="feed-date">${safeText(formatDateTime(new Date(s.submittedAt)))}${badge ? ' · <span class="tag yellow" style="margin-left:4px">⏰ 정시 배지</span>' : ''}</div></div></article>`;
+      // Server-confirmed instant, never the client-supplied submittedAt string.
+      const submittedTime = authoritativeSubmissionDate(s) ?? new Date(s.submittedAt);
+      return `<article class="feed-card"><div class="feed-body" style="padding-bottom:0"><div class="feed-top"><div style="display:flex;align-items:center;gap:8px">${characterMarkupForStage(characterType, characterStage, 'small')}<div><div class="anon instructor-feed-name" data-history-uid="${safeText(uid)}">${safeText(name)}</div><div class="feed-student-id">${safeText(studentId)} · <button type="button" class="feed-view-all" data-view-all="${safeText(name)}">전체 보기</button></div></div></div><span class="tag accent">${Number(s.week)}주차</span></div></div>${imgWithFallback(s.photoURL, `${name} ${s.week}주차 인증샷`, 'feed-img')}<div class="feed-body"><div class="helper" style="margin:0 0 8px">제출 당시 목표 v${Number(s.goalVersion || 1)} · ${safeText(s.goalSnapshot?.goalText || '목표 기록 없음')}</div><div class="feed-reflection">${safeText(s.reflection || '(작성된 성찰이 없습니다)')}</div><div class="feed-date">${safeText(formatDateTime(submittedTime))}${badge ? ' · <span class="tag yellow" style="margin-left:4px">⏰ 정시 배지</span>' : ''}</div></div></article>`;
     })
     .join('');
 

@@ -1,6 +1,6 @@
 import { formatDate, formatDateTime } from '../../utils/date';
 import { getGrowthState } from '../../utils/growth';
-import { isPunctualSubmission } from '../../utils/punctual';
+import { authoritativeSubmissionDate, isPunctualSubmission } from '../../utils/punctual';
 import { safeText } from '../../utils/text';
 import { imgWithFallback } from '../../utils/imgFallback';
 import { formatGoalSchedule } from '../../utils/goal';
@@ -25,6 +25,13 @@ export function goalHistoryHtml(history: GoalVersion[]): string {
       return `<div class="admin-history-item"><b>v${Number(h.version)}${current ? ' · 현재' : ''}</b> · ${safeText(formatDateTime(d))}<br>${safeText(h.goalText || '')}<br><span class="muted">${safeText(formatGoalSchedule(h))}</span></div>`;
     })
     .join('');
+}
+
+// Instructor-facing displays always show the server-confirmed submission
+// instant (never the client-supplied submittedAt string, which a device's
+// local clock could misreport) — see utils/punctual.ts authoritativeSubmissionDate.
+function submittedTimeText(s: Submission): string {
+  return formatDateTime(authoritativeSubmissionDate(s) ?? new Date(s.submittedAt));
 }
 
 let searchQuery = '';
@@ -75,7 +82,7 @@ function renderAdminRows(students: UserProfile[], weekSubs: Submission[], allSub
       const growth = getGrowthState(userSubs.length);
       const status = s ? `<span class="tag green">제출${badgeThisWeek ? ' ⏰' : ''}</span>` : '<span class="tag pink">미제출</span>';
       const detail = s
-        ? `<div class="student-sub-detail">${imgWithFallback(s.photoURL, '인증샷', '')}<div><div class="reflection-label">성찰 및 다짐</div><p>${safeText(s.reflection || '(작성된 성찰이 없습니다)')}</p><div class="helper">제출 당시 목표 v${Number(s.goalVersion || 1)} · ${safeText(s.goalSnapshot?.goalText || '목표 기록 없음')}</div><div class="helper">${safeText(formatDateTime(new Date(s.submittedAt)))} ${badgeThisWeek ? '· ⏰ 정시 배지 획득' : ''}</div></div></div>`
+        ? `<div class="student-sub-detail">${imgWithFallback(s.photoURL, '인증샷', '')}<div><div class="reflection-label">성찰 및 다짐</div><p>${safeText(s.reflection || '(작성된 성찰이 없습니다)')}</p><div class="helper">제출 당시 목표 v${Number(s.goalVersion || 1)} · ${safeText(s.goalSnapshot?.goalText || '목표 기록 없음')}</div><div class="helper">${safeText(submittedTimeText(s))} ${badgeThisWeek ? '· ⏰ 정시 배지 획득' : ''}</div></div></div>`
         : '';
       const goalBox = st.goalText
         ? `<div class="admin-goal-box"><div class="small muted">현재 행동 목표</div><div class="admin-goal-text">${safeText(st.goalText)}</div><div class="helper">${safeText(formatGoalSchedule(st))}</div><details class="goal-history-details" data-uid="${safeText(st.uid)}"><summary>목표 버전 ${st.currentGoalVersion || 1}개 · 이력 보기</summary><div class="admin-history-list" data-history-slot></div></details></div>`
@@ -120,7 +127,7 @@ function historyWeekCardHtml(row: ReturnType<typeof computeStudentWeekRows>[numb
   }
   const s = row.sub!;
   const badge = isPunctualSubmission(s);
-  return `<div class="history-week-item submitted"><div class="history-week-card submitted"><div class="history-week-top"><b>WEEK ${row.week}</b><span class="tag green">제출${badge ? ' · ⏰ 정시' : ''}</span></div><div class="history-week-body">${imgWithFallback(s.photoURL, `${row.week}주차 인증샷`, '')}<div><div class="reflection-label">성찰 및 다짐</div><p>${safeText(s.reflection || '(작성된 성찰이 없습니다)')}</p><div class="helper">제출 당시 목표 v${Number(s.goalVersion || 1)} · ${safeText(s.goalSnapshot?.goalText || '목표 기록 없음')}</div><div class="helper">${safeText(formatDateTime(new Date(s.submittedAt)))}</div></div></div></div></div>`;
+  return `<div class="history-week-item submitted"><div class="history-week-card submitted"><div class="history-week-top"><b>WEEK ${row.week}</b><span class="tag green">제출${badge ? ' · ⏰ 정시' : ''}</span></div><div class="history-week-body">${imgWithFallback(s.photoURL, `${row.week}주차 인증샷`, '')}<div><div class="reflection-label">성찰 및 다짐</div><p>${safeText(s.reflection || '(작성된 성찰이 없습니다)')}</p><div class="helper">제출 당시 목표 v${Number(s.goalVersion || 1)} · ${safeText(s.goalSnapshot?.goalText || '목표 기록 없음')}</div><div class="helper">${safeText(submittedTimeText(s))}</div></div></div></div></div>`;
 }
 
 export async function openStudentHistory(uid: string) {

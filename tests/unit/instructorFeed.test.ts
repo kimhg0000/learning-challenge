@@ -73,12 +73,22 @@ describe('buildInstructorFeedItems', () => {
     expect(items.map((i) => i.submission.week)).toEqual([1, 3, 5]);
   });
 
-  it('with no search query, results are ordered by submission time, most recent first', () => {
+  it('with no search query, results are ordered by the server-confirmed submission time, most recent first', () => {
     const subs = [
-      sub({ userId: 'u1', week: 1, submittedAt: '2026-09-01T00:00:00.000Z' }),
-      sub({ userId: 'u2', week: 1, submittedAt: '2026-09-03T00:00:00.000Z' }),
+      sub({ userId: 'u1', week: 1, serverCreatedAt: new Date('2026-09-01T00:00:00.000Z') }),
+      sub({ userId: 'u2', week: 1, serverCreatedAt: new Date('2026-09-03T00:00:00.000Z') }),
     ];
     const items = buildInstructorFeedItems(students, subs, { week: 0, query: '' });
     expect(items.map((i) => i.uid)).toEqual(['u2', 'u1']);
+  });
+
+  it('ordering ignores a client-supplied submittedAt that disagrees with the server timestamp — a device clock cannot reorder the feed', () => {
+    const subs = [
+      // u1's real server time is EARLIER, but its (untrusted) submittedAt claims to be later.
+      sub({ userId: 'u1', week: 1, serverCreatedAt: new Date('2026-09-01T00:00:00.000Z'), submittedAt: '2026-09-09T00:00:00.000Z' }),
+      sub({ userId: 'u2', week: 1, serverCreatedAt: new Date('2026-09-03T00:00:00.000Z'), submittedAt: '2026-08-20T00:00:00.000Z' }),
+    ];
+    const items = buildInstructorFeedItems(students, subs, { week: 0, query: '' });
+    expect(items.map((i) => i.uid)).toEqual(['u2', 'u1']); // by real serverCreatedAt, not the spoofed submittedAt
   });
 });

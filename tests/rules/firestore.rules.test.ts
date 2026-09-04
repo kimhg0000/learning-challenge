@@ -228,6 +228,26 @@ describe('submissions/{uid}_{semesterId}_w{week}', () => {
     );
   });
 
+  it('rejects a plausible, in-window but non-real serverCreatedAt — proving rejection is about time-spoofing itself, not just landing in the wrong week', async () => {
+    // Isolates the anti-cheating property from the two tests above: this
+    // timestamp is NOT before/after the real week (it's set an hour before
+    // "now", well inside whichever week is actually active), so it would
+    // pass the week-window check on its own. It must still be rejected,
+    // because serverCreatedAt must literally equal request.time — a client
+    // can never supply its own plausible-looking Timestamp, only the
+    // serverTimestamp() sentinel that the server itself resolves.
+    if (currentWeek === null) return; // see the note on `currentWeek` above
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    const plausibleButFake = Timestamp.fromDate(new Date(Date.now() - 3600_000));
+    await assertFails(
+      setDoc(doc(db, 'submissions', subDocId(STUDENT_A.uid, currentWeek)), {
+        ...submissionPayload(),
+        week: currentWeek,
+        serverCreatedAt: plausibleButFake,
+      }),
+    );
+  });
+
   it('rejects a second submission for the same student+week (idempotency)', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'submissions', subDocId(STUDENT_A.uid, 3)), {

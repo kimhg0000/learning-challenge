@@ -1,6 +1,6 @@
 import { PROTOTYPE_MODE } from '../config';
 import { formatDateTime, getScheduledWindow, now, pad } from '../utils/date';
-import { isPunctualSubmission } from '../utils/punctual';
+import { authoritativeSubmissionDate, isPunctualSubmission } from '../utils/punctual';
 import { getGrowthState } from '../utils/growth';
 import { isValidReflection } from '../utils/validation';
 import { safeText } from '../utils/text';
@@ -218,7 +218,10 @@ export function openDetail(sub: Submission) {
   els.detailPhotoFallback.classList.add('hidden');
   els.detailPhoto.src = sub.photoURL || '';
   els.detailReflection.textContent = sub.reflection || '';
-  const d = new Date(sub.submittedAt || Date.now());
+  // The displayed submission time is always the server-confirmed instant
+  // (never the client-supplied submittedAt string, which a device's local
+  // clock could misreport) — see utils/punctual.ts authoritativeSubmissionDate.
+  const d = authoritativeSubmissionDate(sub) ?? new Date(sub.submittedAt || Date.now());
   els.detailMeta.textContent = `제출 ${formatDateTime(d)} · ${sub.status === 'test' ? '프로토타입 테스트 제출' : '주차 내 제출'}`;
   els.detailModal.classList.remove('hidden');
 }

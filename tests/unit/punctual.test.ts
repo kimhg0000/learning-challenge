@@ -55,6 +55,21 @@ describe('isPunctualSubmission', () => {
     expect(isPunctualSubmission(sub)).toBe(false);
   });
 
+  it('judges punctuality from the server timestamp even when the client-supplied submittedAt disagrees (device clock tampering has no effect)', () => {
+    const win = getScheduledWindow(2, 3, '19:00', 60); // Wed 19:00-20:00
+    const realServerTime = new Date(win.start.getTime() + 35 * 60000); // 19:35, real server time -> punctual
+    const spoofedSubmittedAt = new Date(win.end.getTime() + 5 * 3600000).toISOString(); // claims a much later, non-punctual time
+    const sub = {
+      week: 2,
+      goalSnapshot: { version: 1, goalText: 'x', weekday: 3, startTime: '19:00', duration: 60 },
+      submittedAt: spoofedSubmittedAt,
+      serverCreatedAt: realServerTime,
+      status: 'submitted' as const,
+      clientPunctualClaim: false,
+    };
+    expect(isPunctualSubmission(sub)).toBe(true);
+  });
+
   it("status:'test' (prototype-mode only) honors the tester's explicit override instead of recomputing from timestamps", () => {
     const { start } = getWeekBounds(1); // deliberately outside any scheduled window
     const outsideWindowButClaimedPunctual = {
