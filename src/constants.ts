@@ -45,17 +45,25 @@ export interface GrowthStageDef {
   mark: string;
 }
 
+// Stage boundaries: 1 (0-2 completions), 2 (3-5), 3 (6-9), 4 (10-14),
+// 5 (15, i.e. every week). completedCount is the single source of truth —
+// XP here is purely a derived display number (100 XP per completion), never
+// a second, independently-trackable progression axis, so completion count
+// and XP can never contradict each other. A punctual badge earns no XP
+// bonus and is never required to reach any stage: completing all 15 weeks
+// — regardless of how many were punctual — always reaches stage 5.
 export const GROWTH_STAGES: GrowthStageDef[] = [
   { stage: 1, minCompleted: 0, minXp: 0, name: '새싹 동료', mark: '🌱' },
   { stage: 2, minCompleted: 3, minXp: 300, name: '습관 견습생', mark: '🎒' },
   { stage: 3, minCompleted: 6, minXp: 600, name: '집중 탐험가', mark: '✨' },
   { stage: 4, minCompleted: 10, minXp: 1000, name: '습관 수호자', mark: '⚡' },
-  { stage: 5, minCompleted: 13, minXp: 1300, name: '최종 성장형', mark: '👑' },
+  { stage: 5, minCompleted: 15, minXp: 1500, name: '최종 성장형', mark: '👑' },
 ];
 
-// Asset structure ready for the 4 characters x 5 stages = 20 real illustrations:
-// place files at /public/characters/{characterType}/stage-{1..5}.png and swap
-// the emoji fallback in ui/components/character.ts for an <img> once ready.
+// Animal type is chosen once at onboarding and is permanent thereafter
+// (enforced server-side too — see firestore.rules users.update). 4 types x
+// 5 growth stages = 20 real illustrations at public/characters/ — see that
+// folder's README for how they were generated and how art/type/stage map.
 export const CHARACTER_TYPES: Record<CharacterType, { name: string; emoji: string; desc: string }> = {
   rabbit: { name: '몽글 토끼', emoji: '🐰', desc: '차분하게 한 걸음씩' },
   fox: { name: '반짝 여우', emoji: '🦊', desc: '영리하게 루틴을 설계' },

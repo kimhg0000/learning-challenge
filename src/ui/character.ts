@@ -8,25 +8,37 @@ import { state } from './state';
 type Size = 'small' | 'medium' | 'large';
 
 /**
- * Renders the emoji placeholder for a character at its current growth stage.
- * Asset structure is ready for real art: drop 4 characters x 5 stage PNGs at
- * /public/characters/{type}/stage-{1..5}.png and swap the <span class="animal">
- * below for an <img> — everything else (sizing classes, stage glow, evo-mark)
- * already keys off `characterType` + `completedCount` exactly the way real
- * art would.
+ * The animal TYPE (rabbit/fox/otter/panda) is permanent from onboarding
+ * onward; growth STAGE (1-5, derived from completion count) is a fully
+ * separate axis layered on top of it — a rabbit is a rabbit at every
+ * stage, it just grows from the stage-1 illustration into the stage-5
+ * one. Real art lives at /public/characters/{type}/stage-{1-5}.webp (see
+ * that folder's README for provenance/regeneration); the emoji is kept
+ * only as an automatic <img onerror> fallback if an asset is ever missing.
  */
+function orbMarkup(c: { name: string; emoji: string }, type: string, g: { stage: number; name: string; mark: string }, size: Size): string {
+  const safeType = safeText(type);
+  const label = safeText(`${c.name} · ${g.name}`);
+  const fallbackHtml = `<span class="animal">${c.emoji}</span>`.replace(/"/g, '&quot;');
+  return `<div class="character-orb ${size} stage-${g.stage}" title="${label}"><img class="animal-art" src="/characters/${safeType}/stage-${g.stage}.webp" alt="${label}" onerror="this.outerHTML='${fallbackHtml}'"><span class="evo-mark">${g.mark}</span></div>`;
+}
+
+function resolveType(type: string): CharacterType {
+  return type in CHARACTER_TYPES ? (type as CharacterType) : 'rabbit';
+}
+
 export function characterMarkup(type: string, completedCount = 0, size: Size = 'medium'): string {
-  const c = CHARACTER_TYPES[type as CharacterType] ?? CHARACTER_TYPES.rabbit;
+  const resolved = resolveType(type);
   const g = getGrowthState(completedCount);
-  return `<div class="character-orb ${size} stage-${g.stage}" title="${safeText(c.name)} · ${safeText(g.name)}"><span class="animal">${c.emoji}</span><span class="evo-mark">${g.mark}</span></div>`;
+  return orbMarkup(CHARACTER_TYPES[resolved], resolved, g, size);
 }
 
 /** Same visual as characterMarkup, but keyed off an already-known growth stage (1-5) instead of a completion count — used for the anonymous feed, where only the stage at post time is stored, not the raw count. */
 export function characterMarkupForStage(type: string, stage = 1, size: Size = 'medium'): string {
-  const c = CHARACTER_TYPES[type as CharacterType] ?? CHARACTER_TYPES.rabbit;
+  const resolved = resolveType(type);
   const clamped = Math.max(1, Math.min(GROWTH_STAGES.length, Number(stage) || 1));
   const g = GROWTH_STAGES[clamped - 1];
-  return `<div class="character-orb ${size} stage-${g.stage}" title="${safeText(c.name)} · ${safeText(g.name)}"><span class="animal">${c.emoji}</span><span class="evo-mark">${g.mark}</span></div>`;
+  return orbMarkup(CHARACTER_TYPES[resolved], resolved, g, size);
 }
 
 export function renderCharacterChoices() {

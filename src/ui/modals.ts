@@ -1,6 +1,7 @@
 import { PROTOTYPE_MODE } from '../config';
 import { formatDateTime, getScheduledWindow, now, pad } from '../utils/date';
 import { isPunctualSubmission } from '../utils/punctual';
+import { getGrowthState } from '../utils/growth';
 import { isValidReflection } from '../utils/validation';
 import { safeText } from '../utils/text';
 import { formatGoalSchedule } from '../utils/goal';
@@ -167,6 +168,7 @@ async function submitWeek() {
   if (state.activeSubmissionWeek === null || !state.profile || !uid) return;
 
   const week = state.activeSubmissionWeek;
+  const stageBefore = getGrowthState(state.submissions.length).stage;
   els.submitFinalBtn.disabled = true;
   els.submitFinalBtn.textContent = '제출 중...';
   try {
@@ -181,7 +183,15 @@ async function submitWeek() {
     await refreshAfterSubmission();
     const sub = state.submissions.find((s) => Number(s.week) === week);
     const badgeWon = sub ? isPunctualSubmission(sub) : false;
-    toast(`${week}주차 챌린지 완료! +100 XP${badgeWon ? ' · ⏰ 정시 배지 획득!' : ''}`, 'success');
+    const stageAfter = getGrowthState(state.submissions.length).stage;
+    const base = `${week}주차 챌린지 완료! +100 XP${badgeWon ? ' · ⏰ 정시 배지 획득!' : ''}`;
+    if (stageAfter > stageBefore) {
+      toast(`${base} · 새로운 모습으로 성장했어요! (Lv.${stageAfter})`, 'success');
+      els.growthAvatar.classList.add('level-up-pulse');
+      setTimeout(() => els.growthAvatar.classList.remove('level-up-pulse'), 900);
+    } else {
+      toast(base, 'success');
+    }
   } catch (err) {
     console.error(err);
     const message = err instanceof Error ? err.message : '제출 중 오류가 발생했습니다.';

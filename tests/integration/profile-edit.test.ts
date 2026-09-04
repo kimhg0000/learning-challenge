@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { setupIntegrationRules, createStudent } from './helpers';
+import { setupIntegrationRules, createStudent, tinyJpegBlob } from './helpers';
 
 beforeAll(async () => {
   await setupIntegrationRules();
@@ -38,5 +38,29 @@ describe('FirebaseBackend.updateProfile()', () => {
     const { backend, uid, profile } = await createStudent('profile-edit-c@student.example');
     await backend.updateProfile(uid, { name: profile.name, studentId: profile.studentId });
     expect(await backend.getProfileHistory(uid)).toHaveLength(0);
+  });
+
+  it('never alters an already-submitted week\'s photo/reflection/goalSnapshot/submittedAt when the name and studentId are later edited', async () => {
+    // Submission documents never store name/studentId at all (identity is
+    // resolved from userId -> profile at display/export time, which is also
+    // what keeps the student feed anonymous) — so the thing a profile edit
+    // could actually corrupt is the submission's own content snapshot.
+    const { backend, uid, profile } = await createStudent('profile-edit-snapshot@student.example', { studentId: '6667778' });
+    const before = await backend.submitWeek(uid, profile, {
+      week: 1,
+      photoBlob: tinyJpegBlob(),
+      reflection: '수정 전 이름/학번으로 제출한 원본 성찰입니다.',
+    });
+
+    await backend.updateProfile(uid, { name: '수정된이름', studentId: '8889990' });
+
+    const [after] = await backend.getMySubmissions(uid);
+    expect(after.week).toBe(1);
+    expect(after.reflection).toBe(before.reflection);
+    expect(after.photoURL).toBe(before.photoURL);
+    expect(after.photoStoragePath).toBe(before.photoStoragePath);
+    expect(after.submittedAt).toBe(before.submittedAt);
+    expect(after.goalSnapshot).toEqual(before.goalSnapshot);
+    expect(after.status).toBe(before.status);
   });
 });

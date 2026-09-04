@@ -119,6 +119,9 @@ h3{font-size:15px;font-weight:800}
 .character-orb .animal{font-size:40px;line-height:1}
 .character-orb.large .animal{font-size:50px}
 .character-orb.small .animal{font-size:23px}
+.character-orb .animal-art{width:92%;height:92%;object-fit:contain;display:block}
+.level-up-pulse{animation:levelUpPulse .85s ease}
+@keyframes levelUpPulse{0%{transform:scale(1)}35%{transform:scale(1.12)}100%{transform:scale(1)}}
 .character-orb .evo-mark{position:absolute;right:-4px;bottom:-4px;width:24px;height:24px;border-radius:50%;background:var(--surface);border:2px solid var(--bg);display:grid;place-items:center;font-size:12px;box-shadow:var(--shadow-xs)}
 .character-orb.small .evo-mark{width:16px;height:16px;font-size:9px;right:-3px;bottom:-3px;border-width:1.5px}
 .character-orb.stage-2{border-color:var(--success-soft);background:var(--success-soft)}
