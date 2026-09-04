@@ -161,6 +161,46 @@ service cloud.firestore {
 
         allow update, delete: if false;
       }
+
+      // Append-only audit trail of name/studentId corrections — a student's
+      // OWN edit, made through FirebaseBackend.updateProfile() in the same
+      // batch as the users/{uid} update itself. Never touches goal/
+      // submission data. Instructors can read it so a real-name change is
+      // visible in the student-history modal instead of silently rewriting
+      // history.
+      match /profileHistory/{entryId} {
+        allow get, list: if isSignedIn() && (request.auth.uid == uid || isInstructor());
+        allow create: if isSignedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['previousName', 'newName', 'previousStudentId', 'newStudentId', 'changedAt'])
+          && request.resource.data.changedAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // studentIdRegistry/{semesterId}_{studentId} — a lightweight claim-check
+    // so two students in the same semester can't end up with the same
+    // student id (by accident at signup, or by editing into a collision
+    // later). Firestore's own create-vs-update classification does the
+    // actual enforcement: this collection only ever allows `create`, never
+    // `update`, so a create() attempt against an id that's already claimed
+    // is evaluated as an update and is denied by the absence of any allow
+    // update rule — no cross-document exists() check is needed (and a
+    // same-batch exists() check wouldn't see this doc's own creation
+    // anyway). A student's OWN id is intentionally never released once
+    // claimed, even if they later change it, since re-issuing a retired id
+    // to someone else risks exactly the confusion this exists to prevent.
+    // ------------------------------------------------------------------
+    match /studentIdRegistry/{regId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['uid', 'studentId', 'semesterId'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.semesterId == currentSemester()
+        && request.resource.data.studentId.matches('^[0-9]{7}$')
+        && regId == request.resource.data.semesterId + '_' + request.resource.data.studentId;
+      allow update, delete: if false;
     }
 
     // ------------------------------------------------------------------

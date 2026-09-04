@@ -39,6 +39,14 @@ export interface GoalSnapshot extends GoalSettings {
   version: number;
 }
 
+export interface ProfileHistoryEntry {
+  previousName: string;
+  newName: string;
+  previousStudentId: string;
+  newStudentId: string;
+  changedAt: string; // ISO string (denormalized copy of the server timestamp for display)
+}
+
 export interface Submission {
   id: string; // `${uid}_${semesterId}_w${week}`
   userId: string;

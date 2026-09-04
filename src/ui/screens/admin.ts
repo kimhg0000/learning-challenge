@@ -142,10 +142,23 @@ export async function openStudentHistory(uid: string) {
 
   els.historyGoalVersions.innerHTML = '<div class="admin-history-item muted">불러오는 중...</div>';
   els.historyWeeks.innerHTML = computeStudentWeekRows(userSubs).map(historyWeekCardHtml).join('');
+  els.historyProfileNote.classList.add('hidden');
   els.historyModal.classList.remove('hidden');
 
-  const history = await backend.adminGetGoalHistory(uid);
+  const [history, profileHistory] = await Promise.all([
+    backend.adminGetGoalHistory(uid),
+    backend.adminGetProfileHistory(uid),
+  ]);
   els.historyGoalVersions.innerHTML = goalHistoryHtml(history);
+  if (profileHistory.length) {
+    els.historyProfileList.innerHTML = profileHistory
+      .map(
+        (h) =>
+          `<div class="admin-history-item">${safeText(formatDateTime(new Date(h.changedAt)))}<br>이름: ${safeText(h.previousName)} → ${safeText(h.newName)}<br>학번: ${safeText(h.previousStudentId)} → ${safeText(h.newStudentId)}</div>`,
+      )
+      .join('');
+    els.historyProfileNote.classList.remove('hidden');
+  }
 }
 
 export function initAdminEvents() {

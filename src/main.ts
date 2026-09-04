@@ -5,6 +5,7 @@ import { initAuthEvents } from './ui/auth';
 import { initModalEvents } from './ui/modals';
 import { initAdminEvents } from './ui/screens/admin';
 import { initInstructorFeedEvents } from './ui/screens/feed';
+import { initProfileEvents } from './ui/screens/profile';
 import { registerTabChangeHandler, toast } from './ui/dom';
 import { onTabActivated } from './ui/refresh';
 
@@ -18,6 +19,7 @@ initAuthEvents();
 initModalEvents();
 initAdminEvents();
 initInstructorFeedEvents();
+initProfileEvents();
 
 if ('serviceWorker' in navigator) {
   import('virtual:pwa-register')

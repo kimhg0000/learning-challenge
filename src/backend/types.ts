@@ -1,4 +1,4 @@
-import type { CharacterType, FeedPost, GoalSettings, GoalVersion, Submission, UserProfile } from '../types';
+import type { CharacterType, FeedPost, GoalSettings, GoalVersion, ProfileHistoryEntry, Submission, UserProfile } from '../types';
 
 export interface AuthUser {
   uid: string;
@@ -45,6 +45,9 @@ export interface Backend {
   completeOnboarding(uid: string, email: string, input: OnboardingInput): Promise<UserProfile>;
   updateGoal(uid: string, next: GoalSettings): Promise<UserProfile>;
   getGoalHistory(uid: string): Promise<GoalVersion[]>;
+  /** Corrects a typo'd name/studentId after signup. Never changes characterType (permanent) or goal fields. */
+  updateProfile(uid: string, next: { name: string; studentId: string }): Promise<UserProfile>;
+  getProfileHistory(uid: string): Promise<ProfileHistoryEntry[]>;
 
   isInstructor(email: string | null): Promise<boolean>;
   ensureInstructorProfile(uid: string, email: string, displayName: string | null): Promise<UserProfile>;
@@ -58,4 +61,5 @@ export interface Backend {
   adminListStudents(semesterId?: string): Promise<UserProfile[]>;
   adminListAllSubmissions(semesterId?: string): Promise<Submission[]>;
   adminGetGoalHistory(uid: string): Promise<GoalVersion[]>;
+  adminGetProfileHistory(uid: string): Promise<ProfileHistoryEntry[]>;
 }

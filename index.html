@@ -56,7 +56,7 @@
       <div class="field"><label for="profile-name">이름</label><input id="profile-name" class="input" maxlength="30" placeholder="예: 김한결"></div>
       <div class="field"><label for="profile-student-id">학번</label><input id="profile-student-id" class="input" inputmode="numeric" pattern="[0-9]*" maxlength="7" placeholder="예: 1234567"></div>
       <p class="helper">학번은 <b>반드시 7자리 숫자</b>로 입력합니다. 다른 형식은 다음 단계로 넘어갈 수 없습니다. 입력한 학번은 제출 후에도 프로필 화면에서 다시 확인할 수 있으니, 다음 단계로 넘어가기 전에 한 번 더 확인해주세요.</p>
-      <div class="field"><label>나의 성장 캐릭터 · 하나만 선택</label><p class="helper" style="margin:0 0 8px">15주 동안 함께 성장할 캐릭터를 골라주세요. 4가지 캐릭터 모두 동일한 5단계 성장을 합니다.</p><div id="character-grid" class="character-grid"></div></div>
+      <div class="field"><label>나의 성장 캐릭터 · 하나만 선택</label><p class="helper" style="margin:0 0 8px">15주 동안 함께 성장할 캐릭터를 골라주세요. 4가지 캐릭터 모두 동일한 5단계 성장을 합니다.</p><div id="character-grid" class="character-grid"></div><p class="helper" style="margin-top:9px;color:var(--gold)">⚠ 선택한 캐릭터는 15주 동안 함께 성장합니다. 선택 후에는 다른 캐릭터로 변경할 수 없습니다.</p></div>
       <button id="profile-next-btn" class="btn btn-primary" style="margin-top:22px">다음</button>
     </div>
 
@@ -169,16 +169,21 @@
 
       <div class="section-label">프로필</div>
       <div class="panel plain">
+        <div class="profile-row"><span>이름</span><span id="profile-name-row-view">-</span></div>
+        <div class="profile-row"><span>학번</span><span id="profile-studentid-row-view">-</span></div>
         <div class="profile-row"><span>로그인 계정</span><span id="profile-email-view">-</span></div>
         <div class="profile-row"><span>익명 표시명</span><span id="profile-anon-view">-</span></div>
       </div>
+      <button id="edit-profile-btn" class="btn btn-secondary" style="margin-top:10px;width:100%">이름·학번 수정</button>
 
       <div class="section-label">캐릭터</div>
       <div class="panel plain">
         <div class="profile-row"><span>선택 캐릭터</span><span id="profile-character-view">-</span></div>
         <div class="profile-row"><span>성장 단계</span><span id="profile-growth-view">-</span></div>
         <div class="profile-row"><span>정시 실천 배지</span><span id="profile-badge-view">0개</span></div>
+        <div class="profile-row"><span>다음 성장까지</span><span id="profile-next-growth-view">-</span></div>
       </div>
+      <p class="helper">캐릭터는 처음 선택한 뒤에는 변경할 수 없습니다. 15주 동안 이 캐릭터와 함께 성장합니다.</p>
 
       <div class="section-label">현재 챌린지</div>
       <div class="panel plain">
@@ -236,10 +241,10 @@
       <div class="modal-head"><div><div class="eyebrow" id="submit-week-label">WEEK 1</div><h2>이번 주 챌린지 인증</h2></div><button class="close-btn" data-close="submission-modal" aria-label="닫기">✕</button></div>
       <div class="panel plain" style="padding:13px;margin-bottom:12px"><div class="small muted">이번 주 목표</div><div id="submit-goal-text" style="font-size:14px;font-weight:700;line-height:1.55;margin-top:5px"></div></div>
       <div class="field" style="margin-top:0"><label><span class="step-num">1</span> 인증샷 촬영</label>
-        <div class="camera-box" id="camera-box"><div class="camera-placeholder" id="camera-placeholder"><svg viewBox="0 0 24 24" class="ico-lg"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1-2h7l1 2h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9Z"/><circle cx="12" cy="13" r="3.5"/></svg><b>카메라 사용을 허용</b>한 뒤 인증샷을 촬영하세요.<br>촬영 시 날짜와 시간이 사진 오른쪽 아래에 자동으로 기록됩니다.</div><video id="camera-video" class="hidden" autoplay playsinline muted></video><img id="captured-preview" class="hidden" alt="인증샷 미리보기"></div>
+        <div class="camera-box" id="camera-box"><div class="camera-placeholder" id="camera-placeholder"><svg viewBox="0 0 24 24" class="ico-lg"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1-2h7l1 2h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9Z"/><circle cx="12" cy="13" r="3.5"/></svg><b>인증사진 촬영</b> 버튼을 눌러 촬영하세요.<br>촬영 시 날짜와 시간이 사진 오른쪽 아래에 자동으로 기록됩니다.</div><img id="captured-preview" class="hidden" alt="인증샷 미리보기"></div>
         <input id="camera-file-input" type="file" accept="image/*" capture="environment" class="hidden">
-        <div class="camera-actions"><button id="camera-file-btn" class="btn btn-primary" type="button">카메라로 촬영</button><button id="camera-start-btn" class="btn btn-secondary" type="button">실시간 카메라</button></div>
-        <div class="camera-actions" style="margin-top:9px"><button id="camera-capture-btn" class="btn btn-primary" disabled type="button">실시간 촬영</button><button id="prototype-photo-btn" class="btn btn-secondary hidden" type="button">🧪 테스트 사진 생성</button></div>
+        <div class="camera-actions" style="grid-template-columns:1fr"><button id="camera-file-btn" class="btn btn-primary" type="button">인증사진 촬영</button></div>
+        <button id="prototype-photo-btn" class="btn btn-secondary hidden" style="width:100%;margin-top:9px" type="button">🧪 테스트 사진 생성</button>
         <button id="camera-retake-btn" class="btn btn-secondary hidden" style="width:100%;margin-top:9px" type="button">다시 촬영</button>
       </div>
       <div id="prototype-punctual-box" class="prototype-banner hidden" style="margin-top:12px"><strong>🧪 정시 배지 테스트</strong><p>현재 날짜가 실제 운영기간 밖이어도 배지 UI를 확인할 수 있습니다.</p><label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12px"><input id="prototype-punctual-check" type="checkbox"> 이번 테스트 제출을 '정해진 시간에 실천'으로 가정</label></div>
@@ -254,10 +259,12 @@
   <div id="detail-modal" class="modal hidden"><div class="modal-card"><div class="modal-handle"></div><div class="modal-head"><div><div class="eyebrow" id="detail-week-label">WEEK</div><h2>완료 기록</h2></div><button class="close-btn" data-close="detail-modal" aria-label="닫기">✕</button></div><div class="panel plain" style="padding:13px"><div class="small muted">완수한 목표</div><div id="detail-goal" style="font-size:14px;font-weight:700;line-height:1.55;margin-top:5px"></div><div id="detail-goal-schedule" class="helper"></div><div id="detail-badge" style="margin-top:9px"></div></div><img id="detail-photo" class="detail-photo" alt="인증샷"><div id="detail-photo-fallback" class="detail-photo img-fallback hidden" style="height:220px">이미지를 불러올 수 없습니다</div><div class="small muted" style="margin:14px 0 7px">성찰 및 다짐</div><div id="detail-reflection" class="detail-reflection"></div><div id="detail-meta" class="helper"></div></div></div>
 
   <!-- GOAL HISTORY MODAL -->
+  <div id="profile-edit-modal" class="modal hidden"><div class="modal-card"><div class="modal-handle"></div><div class="modal-head"><div><div class="eyebrow">PROFILE</div><h2>이름·학번 수정</h2></div><button class="close-btn" data-close="profile-edit-modal" aria-label="닫기">✕</button></div><div class="field" style="margin-top:0"><label for="edit-profile-name">이름</label><input id="edit-profile-name" class="input" maxlength="30" placeholder="예: 김한결"></div><div class="field"><label for="edit-profile-student-id">학번</label><input id="edit-profile-student-id" class="input" inputmode="numeric" pattern="[0-9]*" maxlength="7" placeholder="예: 1234567"></div><p class="helper">학번은 반드시 7자리 숫자여야 하며, 이미 다른 학생이 사용 중인 학번으로는 변경할 수 없습니다. 변경 이력은 계속 보존됩니다.</p><button id="save-profile-edit-btn" class="btn btn-primary" style="width:100%;margin-top:16px">저장</button></div></div>
+
   <div id="goal-history-modal" class="modal hidden"><div class="modal-card"><div class="modal-handle"></div><div class="modal-head"><div><div class="eyebrow">GOAL HISTORY</div><h2>목표 변경 이력</h2></div><button class="close-btn" data-close="goal-history-modal" aria-label="닫기">✕</button></div><div class="panel plain" style="padding:13px;margin-bottom:12px"><div class="body-sm">목표를 수정해도 이전 설정은 삭제되지 않습니다. 가장 최근 버전이 현재 적용 중인 목표입니다.</div></div><div id="goal-history-list" class="history-list"></div></div></div>
 
   <!-- STUDENT HISTORY MODAL (instructor view) -->
-  <div id="student-history-modal" class="modal hidden"><div class="modal-card wide"><div class="modal-handle"></div><div class="modal-head"><div><div class="eyebrow">STUDENT HISTORY</div><h2 id="history-student-name">이름</h2></div><button class="close-btn" data-close="student-history-modal" aria-label="닫기">✕</button></div><div id="history-summary" class="history-summary-grid"></div><details class="goal-history-details standalone"><summary>목표 변경 이력<span class="chev-ico">▾</span></summary><div id="history-goal-versions" class="admin-history-list"></div></details><div class="small muted" style="margin:16px 0 8px">15주 전체 기록</div><div id="history-weeks" class="history-weeks-timeline"></div></div></div>
+  <div id="student-history-modal" class="modal hidden"><div class="modal-card wide"><div class="modal-handle"></div><div class="modal-head"><div><div class="eyebrow">STUDENT HISTORY</div><h2 id="history-student-name">이름</h2></div><button class="close-btn" data-close="student-history-modal" aria-label="닫기">✕</button></div><div id="history-summary" class="history-summary-grid"></div><details id="history-profile-note" class="goal-history-details standalone hidden"><summary>이름·학번 변경 이력 있음<span class="chev-ico">▾</span></summary><div id="history-profile-list" class="admin-history-list"></div></details><details class="goal-history-details standalone"><summary>목표 변경 이력<span class="chev-ico">▾</span></summary><div id="history-goal-versions" class="admin-history-list"></div></details><div class="small muted" style="margin:16px 0 8px">15주 전체 기록</div><div id="history-weeks" class="history-weeks-timeline"></div></div></div>
 
   <div class="toast-wrap" id="toast-wrap"></div>
 </div>

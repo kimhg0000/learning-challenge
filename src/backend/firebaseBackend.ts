@@ -39,7 +39,7 @@ import { getScheduledWindow, isWithinSubmissionWindow } from '../utils/date';
 import { makeAnonName } from '../utils/text';
 import { goalSettingsChanged } from '../utils/goal';
 import { isValidGoalSettings, isValidName, isValidStudentId } from '../utils/validation';
-import type { FeedPost, GoalSettings, GoalVersion, Submission, UserProfile } from '../types';
+import type { FeedPost, GoalSettings, GoalVersion, ProfileHistoryEntry, Submission, UserProfile } from '../types';
 import type { Backend, AuthUser, OnboardingInput, SubmitWeekInput } from './types';
 
 export class SubmissionExistsError extends Error {
@@ -234,8 +234,79 @@ export class FirebaseBackend implements Backend {
       changedAt: serverTimestamp(),
       changeType: 'initial',
     });
-    await batch.commit();
+    // Claims this student id for this semester (see firestore.rules
+    // studentIdRegistry) — if another student already claimed it, this
+    // create is evaluated as an update (no allow-update rule exists for
+    // this collection) and is denied, which atomically fails the WHOLE
+    // batch, so onboarding never partially completes on a duplicate id.
+    batch.set(doc(this.db, 'studentIdRegistry', `${SEMESTER_ID}_${profile.studentId}`), {
+      uid,
+      studentId: profile.studentId,
+      semesterId: SEMESTER_ID,
+    });
+    try {
+      await batch.commit();
+    } catch (err) {
+      throw new Error('가입에 실패했습니다. 학번이 이미 사용 중일 수 있습니다. 학번을 다시 확인해주세요.');
+    }
     return profile;
+  }
+
+  /**
+   * Corrects a student's own name/studentId after signup (typos happen).
+   * Never touches characterType (permanent, see firestore.rules) or goal
+   * fields, and never rewrites any already-submitted week's own goalSnapshot
+   * — those stay exactly as they were at submission time regardless of a
+   * later profile correction.
+   */
+  async updateProfile(uid: string, next: { name: string; studentId: string }): Promise<UserProfile> {
+    if (!isValidName(next.name)) throw new Error('이름을 정확히 입력해주세요.');
+    if (!isValidStudentId(next.studentId)) throw new Error('학번은 반드시 7자리 숫자여야 합니다.');
+    const current = await this.getProfile(uid);
+    if (!current) throw new Error('프로필을 먼저 설정해주세요.');
+
+    const trimmedName = next.name.trim();
+    const nameChanged = trimmedName !== current.name;
+    const studentIdChanged = next.studentId !== current.studentId;
+    if (!nameChanged && !studentIdChanged) return current;
+
+    const updated: UserProfile = { ...current, name: trimmedName, studentId: next.studentId, updatedAt: nowIso() };
+    const batch = writeBatch(this.db);
+    batch.set(doc(this.db, 'users', uid), updated);
+    batch.set(doc(collection(this.db, 'users', uid, 'profileHistory')), {
+      previousName: current.name,
+      newName: updated.name,
+      previousStudentId: current.studentId,
+      newStudentId: updated.studentId,
+      changedAt: serverTimestamp(),
+    });
+    if (studentIdChanged) {
+      batch.set(doc(this.db, 'studentIdRegistry', `${SEMESTER_ID}_${next.studentId}`), {
+        uid,
+        studentId: next.studentId,
+        semesterId: SEMESTER_ID,
+      });
+    }
+    try {
+      await batch.commit();
+    } catch (err) {
+      throw new Error(studentIdChanged ? '학번이 이미 사용 중일 수 있습니다. 학번을 다시 확인해주세요.' : '프로필 저장에 실패했습니다.');
+    }
+    return updated;
+  }
+
+  async getProfileHistory(uid: string): Promise<ProfileHistoryEntry[]> {
+    const qs = await getDocs(collection(this.db, 'users', uid, 'profileHistory'));
+    return qs.docs
+      .map((d) => d.data() as { previousName: string; newName: string; previousStudentId: string; newStudentId: string; changedAt: { toDate(): Date } })
+      .map((d) => ({
+        previousName: d.previousName,
+        newName: d.newName,
+        previousStudentId: d.previousStudentId,
+        newStudentId: d.newStudentId,
+        changedAt: d.changedAt?.toDate ? d.changedAt.toDate().toISOString() : nowIso(),
+      }))
+      .sort((a, b) => a.changedAt.localeCompare(b.changedAt));
   }
 
   async updateGoal(uid: string, next: GoalSettings): Promise<UserProfile> {
@@ -290,6 +361,10 @@ export class FirebaseBackend implements Backend {
 
   async adminGetGoalHistory(uid: string): Promise<GoalVersion[]> {
     return this.getGoalHistory(uid);
+  }
+
+  async adminGetProfileHistory(uid: string): Promise<ProfileHistoryEntry[]> {
+    return this.getProfileHistory(uid);
   }
 
   async getMySubmissions(uid: string): Promise<Submission[]> {

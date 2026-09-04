@@ -66,6 +66,19 @@ const DEFAULT_GOAL: GoalSettings = {
   duration: 60,
 };
 
+// firestore.rules now enforces one studentId per semester (studentIdRegistry)
+// — createStudent() is called by dozens of tests across several files that
+// share one emulator project for the whole run (fileParallelism:false, no
+// clearFirestore between files; see scale.test.ts). A fixed default id would
+// collide the moment more than one such call happens; a simple in-module
+// counter isn't enough either, since vitest gives each test FILE its own
+// module instance (so the counter itself doesn't stay shared across files).
+// A random 7-digit id keeps collisions negligible across the whole run
+// without every test needing to invent its own unique id.
+function nextDefaultStudentId(): string {
+  return String(1000000 + Math.floor(Math.random() * 9000000));
+}
+
 /** Signs up a brand-new student (real Auth emulator account + real completeOnboarding()) and returns the ready backend + uid + profile. */
 export async function createStudent(
   email: string,
@@ -83,7 +96,7 @@ export async function createStudent(
   });
   const profile = await backend.completeOnboarding(uid, email, {
     name: overrides.name ?? '테스트 학생',
-    studentId: overrides.studentId ?? '1234567',
+    studentId: overrides.studentId ?? nextDefaultStudentId(),
     characterType: overrides.characterType ?? 'rabbit',
     goal: overrides.goal ?? DEFAULT_GOAL,
   });

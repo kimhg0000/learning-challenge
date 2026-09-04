@@ -11,49 +11,23 @@ import { state } from './state';
 import { getWeekState } from './weekState';
 import { refreshAfterSubmission } from './refresh';
 
-// --- Camera / photo capture (all transient, submission-modal-local state) ---
-let cameraStream: MediaStream | null = null;
+// --- Photo capture (all transient, submission-modal-local state) ---
+// Only the native camera app (via <input type="file" capture="environment">)
+// is used to take the proof photo — a live getUserMedia() preview used to be
+// offered as a second option, but real iPhone Safari testing showed its
+// captured frame clipped the date/time watermark stamped in the bottom-right
+// corner (canvas dimensions from a live <video> element don't reliably match
+// what the phone's own camera app captures), while the native-camera-app
+// path stamps correctly every time. Keeping only one path is also simpler
+// for a student to use correctly.
 let capturedBlob: Blob | null = null;
 let capturedDataUrl = '';
 
-function stopCamera() {
-  if (cameraStream) {
-    cameraStream.getTracks().forEach((t) => t.stop());
-    cameraStream = null;
-  }
-  els.cameraVideo.srcObject = null;
-}
-
 function resetCameraUI() {
-  stopCamera();
-  els.cameraVideo.classList.add('hidden');
   els.capturedPreview.classList.add('hidden');
   els.cameraPlaceholder.classList.remove('hidden');
-  els.cameraCaptureBtn.disabled = true;
   els.cameraRetakeBtn.classList.add('hidden');
-  els.cameraStartBtn.classList.remove('hidden');
-  els.cameraStartBtn.textContent = '실시간 카메라';
   els.prototypePhotoBtn.classList.toggle('hidden', !PROTOTYPE_MODE);
-}
-
-async function startCamera() {
-  try {
-    stopCamera();
-    if (!navigator.mediaDevices?.getUserMedia) throw new Error('camera api unavailable');
-    cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 1600 } },
-      audio: false,
-    });
-    els.cameraVideo.srcObject = cameraStream;
-    els.cameraVideo.classList.remove('hidden');
-    els.cameraPlaceholder.classList.add('hidden');
-    els.capturedPreview.classList.add('hidden');
-    els.cameraCaptureBtn.disabled = false;
-    els.cameraStartBtn.textContent = '카메라 다시 켜기';
-  } catch (err) {
-    console.error(err);
-    toast('카메라 사용 권한을 허용해주세요. iPhone은 Safari 설정에서도 카메라 권한이 필요할 수 있습니다.', 'error');
-  }
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -84,33 +58,9 @@ function addTimestamp(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) 
 function showCapturedPreview() {
   els.capturedPreview.src = capturedDataUrl;
   els.capturedPreview.classList.remove('hidden');
-  els.cameraVideo.classList.add('hidden');
   els.cameraPlaceholder.classList.add('hidden');
-  els.cameraStartBtn.classList.add('hidden');
-  els.cameraCaptureBtn.disabled = true;
   els.cameraRetakeBtn.classList.remove('hidden');
-  stopCamera();
   toast('날짜·시간이 포함된 인증샷이 준비되었습니다.', 'success');
-}
-
-async function capturePhoto() {
-  if (!cameraStream || !els.cameraVideo.videoWidth) {
-    toast('카메라가 준비될 때까지 잠시 후 다시 촬영해주세요.');
-    return;
-  }
-  const vw = els.cameraVideo.videoWidth;
-  const vh = els.cameraVideo.videoHeight;
-  const maxW = 1280;
-  const scale = Math.min(1, maxW / vw);
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(vw * scale);
-  canvas.height = Math.round(vh * scale);
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(els.cameraVideo, 0, 0, canvas.width, canvas.height);
-  addTimestamp(ctx, canvas);
-  capturedBlob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.84));
-  capturedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
-  showCapturedPreview();
 }
 
 async function stampImageSource(src: string) {
@@ -293,8 +243,6 @@ export function initModalEvents() {
     els.detailPhoto.classList.add('hidden');
     els.detailPhotoFallback.classList.remove('hidden');
   };
-  els.cameraStartBtn.onclick = startCamera;
-  els.cameraCaptureBtn.onclick = capturePhoto;
   els.cameraFileBtn.onclick = () => els.cameraFileInput.click();
   els.cameraFileInput.onchange = () => {
     const f = els.cameraFileInput.files?.[0];
@@ -319,7 +267,7 @@ export function initModalEvents() {
       if (id === 'submission-modal') resetCameraUI();
     };
   });
-  [els.submissionModal, els.detailModal, els.historyModal].forEach((m) => {
+  [els.submissionModal, els.detailModal, els.historyModal, els.profileEditModal].forEach((m) => {
     m.addEventListener('click', (e) => {
       if (e.target === m) {
         m.classList.add('hidden');
@@ -327,6 +275,5 @@ export function initModalEvents() {
       }
     });
   });
-  window.addEventListener('pagehide', stopCamera);
   els.goalHistoryBtn.onclick = () => void openGoalHistory();
 }

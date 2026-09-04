@@ -395,3 +395,80 @@ describe('instructorAllowlist/{email}', () => {
     await assertFails(setDoc(doc(db, 'instructorAllowlist', INSTRUCTOR.email), { note: 'self-added' }));
   });
 });
+
+describe('studentIdRegistry/{semesterId}_{studentId}', () => {
+  it('a student can claim their own, never-before-claimed student id', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await assertSucceeds(
+      setDoc(doc(db, 'studentIdRegistry', `${SEMESTER_ID}_1234567`), { uid: STUDENT_A.uid, studentId: '1234567', semesterId: SEMESTER_ID }),
+    );
+  });
+
+  it('a second student cannot claim an id another student already claimed — the whole point of this collection', async () => {
+    const dbA = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await setDoc(doc(dbA, 'studentIdRegistry', `${SEMESTER_ID}_1234567`), { uid: STUDENT_A.uid, studentId: '1234567', semesterId: SEMESTER_ID });
+
+    const dbB = testEnv.authenticatedContext(STUDENT_B.uid, { email: STUDENT_B.email }).firestore();
+    await assertFails(
+      setDoc(doc(dbB, 'studentIdRegistry', `${SEMESTER_ID}_1234567`), { uid: STUDENT_B.uid, studentId: '1234567', semesterId: SEMESTER_ID }),
+    );
+  });
+
+  it('a student cannot claim a student id on behalf of a different uid', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await assertFails(
+      setDoc(doc(db, 'studentIdRegistry', `${SEMESTER_ID}_7654321`), { uid: STUDENT_B.uid, studentId: '7654321', semesterId: SEMESTER_ID }),
+    );
+  });
+
+  it('rejects a malformed (non-7-digit) student id', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await assertFails(
+      setDoc(doc(db, 'studentIdRegistry', `${SEMESTER_ID}_abc`), { uid: STUDENT_A.uid, studentId: 'abc', semesterId: SEMESTER_ID }),
+    );
+  });
+
+  it('no one can update or delete a claimed registration once created', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    const ref = doc(db, 'studentIdRegistry', `${SEMESTER_ID}_1234567`);
+    await setDoc(ref, { uid: STUDENT_A.uid, studentId: '1234567', semesterId: SEMESTER_ID });
+    await assertFails(deleteDoc(ref));
+  });
+});
+
+describe('users/{uid}/profileHistory/{entryId}', () => {
+  const historyEntry = {
+    previousName: '김학생', newName: '김올바름',
+    previousStudentId: '1234567', newStudentId: '7654321',
+    changedAt: serverTimestamp(),
+  };
+
+  it('a student can append their own name/studentId change to their own history', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await assertSucceeds(setDoc(doc(collection(db, 'users', STUDENT_A.uid, 'profileHistory')), historyEntry));
+  });
+
+  it('a student cannot append a profile-history entry to another student\'s subcollection', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await assertFails(setDoc(doc(collection(db, 'users', STUDENT_B.uid, 'profileHistory')), historyEntry));
+  });
+
+  it('an instructor can read a student\'s profile-history entries; another student cannot', async () => {
+    await seedInstructorAllowlist();
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(collection(ctx.firestore(), 'users', STUDENT_A.uid, 'profileHistory')), { ...historyEntry, changedAt: SEED_TIMESTAMP });
+    });
+    const instructorDb = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email }).firestore();
+    await assertSucceeds(getDocs(collection(instructorDb, 'users', STUDENT_A.uid, 'profileHistory')));
+
+    const otherStudentDb = testEnv.authenticatedContext(STUDENT_B.uid, { email: STUDENT_B.email }).firestore();
+    await assertFails(getDocs(collection(otherStudentDb, 'users', STUDENT_A.uid, 'profileHistory')));
+  });
+
+  it('history entries are immutable once written', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    const ref = doc(collection(db, 'users', STUDENT_A.uid, 'profileHistory'));
+    await setDoc(ref, historyEntry);
+    await assertFails(deleteDoc(ref));
+  });
+});

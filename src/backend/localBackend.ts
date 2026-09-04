@@ -5,7 +5,7 @@ import { getScheduledWindow } from '../utils/date';
 import { makeAnonName } from '../utils/text';
 import { goalSettingsChanged } from '../utils/goal';
 import { isValidGoalSettings, isValidName, isValidStudentId } from '../utils/validation';
-import type { FeedPost, GoalSettings, GoalVersion, Submission, UserProfile } from '../types';
+import type { FeedPost, GoalSettings, GoalVersion, ProfileHistoryEntry, Submission, UserProfile } from '../types';
 import type { AuthUser, Backend, OnboardingInput, SubmitWeekInput } from './types';
 
 /**
@@ -74,10 +74,12 @@ interface DemoState {
   profile: UserProfile | null;
   goalVersions: GoalVersion[];
   submissions: Submission[];
+  profileHistory: ProfileHistoryEntry[];
 }
 
 async function loadState(uid: string): Promise<DemoState> {
-  return (await idbGet(`demo:state:${uid}`)) ?? { profile: null, goalVersions: [], submissions: [] };
+  const raw = await idbGet<Partial<DemoState>>(`demo:state:${uid}`);
+  return { profile: null, goalVersions: [], submissions: [], profileHistory: [], ...raw };
 }
 async function saveState(uid: string, state: DemoState): Promise<void> {
   await idbSet(`demo:state:${uid}`, state);
@@ -195,6 +197,32 @@ export class LocalBackend implements Backend {
   async adminGetGoalHistory(uid: string): Promise<GoalVersion[]> {
     if (uid === 'demo-classmate-1' || uid === 'demo-classmate-2') return [];
     return this.getGoalHistory(uid);
+  }
+
+  async updateProfile(uid: string, next: { name: string; studentId: string }): Promise<UserProfile> {
+    if (!isValidName(next.name)) throw new Error('이름을 정확히 입력해주세요.');
+    if (!isValidStudentId(next.studentId)) throw new Error('학번은 반드시 7자리 숫자여야 합니다.');
+    const state = await loadState(uid);
+    if (!state.profile) throw new Error('프로필을 먼저 설정해주세요.');
+    const trimmedName = next.name.trim();
+    if (trimmedName === state.profile.name && next.studentId === state.profile.studentId) return state.profile;
+
+    state.profileHistory.push({
+      previousName: state.profile.name, newName: trimmedName,
+      previousStudentId: state.profile.studentId, newStudentId: next.studentId,
+      changedAt: nowIso(),
+    });
+    state.profile = { ...state.profile, name: trimmedName, studentId: next.studentId, updatedAt: nowIso() };
+    await saveState(uid, state);
+    return state.profile;
+  }
+
+  async getProfileHistory(uid: string): Promise<ProfileHistoryEntry[]> {
+    return (await loadState(uid)).profileHistory;
+  }
+  async adminGetProfileHistory(uid: string): Promise<ProfileHistoryEntry[]> {
+    if (uid === 'demo-classmate-1' || uid === 'demo-classmate-2') return [];
+    return this.getProfileHistory(uid);
   }
 
   async getMySubmissions(uid: string): Promise<Submission[]> {

@@ -40,12 +40,15 @@ export const els = {
   profileGrowthView: $('profile-growth-view'), profileBadgeView: $('profile-badge-view'), profileGoalView: $('profile-goal-view'),
   profileScheduleView: $('profile-schedule-view'), editGoalBtn: $('edit-goal-btn'), goalHistoryBtn: $('goal-history-btn'),
   goalHistoryCount: $('goal-history-count'), logoutBtn: $('logout-btn'),
+  profileNameRowView: $('profile-name-row-view'), profileStudentIdRowView: $('profile-studentid-row-view'),
+  profileNextGrowthView: $('profile-next-growth-view'), editProfileBtn: $('edit-profile-btn'),
+  profileEditModal: $('profile-edit-modal'), editProfileName: $<HTMLInputElement>('edit-profile-name'),
+  editProfileStudentId: $<HTMLInputElement>('edit-profile-student-id'), saveProfileEditBtn: $<HTMLButtonElement>('save-profile-edit-btn'),
 
   submissionModal: $('submission-modal'), submitWeekLabel: $('submit-week-label'), submitGoalText: $('submit-goal-text'),
   prototypePunctualBox: $('prototype-punctual-box'), prototypePunctualCheck: $<HTMLInputElement>('prototype-punctual-check'),
-  cameraVideo: $<HTMLVideoElement>('camera-video'), cameraPlaceholder: $('camera-placeholder'),
-  capturedPreview: $<HTMLImageElement>('captured-preview'), cameraStartBtn: $('camera-start-btn'),
-  cameraCaptureBtn: $<HTMLButtonElement>('camera-capture-btn'), cameraRetakeBtn: $('camera-retake-btn'),
+  cameraPlaceholder: $('camera-placeholder'),
+  capturedPreview: $<HTMLImageElement>('captured-preview'), cameraRetakeBtn: $('camera-retake-btn'),
   cameraFileInput: $<HTMLInputElement>('camera-file-input'), cameraFileBtn: $('camera-file-btn'),
   prototypePhotoBtn: $('prototype-photo-btn'), reflectionText: $<HTMLTextAreaElement>('reflection-text'),
   reflectionCount: $('reflection-count'), submitFinalBtn: $<HTMLButtonElement>('submit-final-btn'),
@@ -63,6 +66,7 @@ export const els = {
 
   historyModal: $('student-history-modal'), historyStudentName: $('history-student-name'),
   historySummary: $('history-summary'), historyGoalVersions: $('history-goal-versions'), historyWeeks: $('history-weeks'),
+  historyProfileNote: $('history-profile-note'), historyProfileList: $('history-profile-list'),
 
   toastWrap: $('toast-wrap'),
 };

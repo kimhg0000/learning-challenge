@@ -35,6 +35,7 @@ function prefillOnboarding() {
   renderCharacterChoices();
   els.goalSaveBtn.textContent = state.editingGoal ? '변경사항 저장' : '15주 챌린지 시작';
   els.goalEditHistoryNote.classList.toggle('hidden', !state.editingGoal);
+  els.goalBackBtn.textContent = state.editingGoal ? '취소' : '이전';
 }
 
 async function afterLogin() {
@@ -209,7 +210,19 @@ export function initAuthEvents() {
     if (!state.selectedCharacter || !isValidCharacterType(state.selectedCharacter)) return toast('15주 동안 함께할 캐릭터를 하나 선택해주세요.', 'error');
     showOnboardingStep(2);
   };
-  els.goalBackBtn.onclick = () => showOnboardingStep(1);
+  els.goalBackBtn.onclick = () => {
+    // Editing an existing goal must never route back through the first-time
+    // signup screen (name/studentId/character) — that screen is onboarding-
+    // only, its fields aren't saved from here, and landing on it again after
+    // already having a profile is confusing (see the redesign feedback).
+    if (state.editingGoal) {
+      state.editingGoal = false;
+      showScreen('main');
+      setTab('profile');
+      return;
+    }
+    showOnboardingStep(1);
+  };
   els.goalSaveBtn.onclick = () => void handleGoalSave();
 
   els.editGoalBtn.onclick = () => {
