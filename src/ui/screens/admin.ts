@@ -38,6 +38,12 @@ let searchQuery = '';
 type StatusFilter = 'all' | 'submitted' | 'missing' | 'punctual';
 let statusFilter: StatusFilter = 'all';
 
+// The student currently shown in the history modal — the only place the
+// "학생 계정 삭제" button appears, so the delete-confirmation modal always
+// knows which uid it's acting on without re-threading it through every call.
+let currentHistoryStudent: UserProfile | null = null;
+const DELETE_CONFIRM_TEXT = '삭제';
+
 export async function loadAdminDashboard(options: { forceRefresh?: boolean } = {}) {
   const week = Number(els.adminWeekSelect.value || 1) || 1;
   els.adminWeekSelect.value = String(week);
@@ -134,6 +140,7 @@ export async function openStudentHistory(uid: string) {
   const { students, allSubs } = await getAdminData();
   const student = students.find((s) => s.uid === uid);
   if (!student) return;
+  currentHistoryStudent = student;
   const userSubs = allSubs.filter((s) => s.userId === uid);
   const punctualTotal = userSubs.filter((s) => isPunctualSubmission(s)).length;
   const growth = getGrowthState(userSubs.length);
@@ -168,6 +175,41 @@ export async function openStudentHistory(uid: string) {
   }
 }
 
+function openDeleteStudentModal() {
+  const student = currentHistoryStudent;
+  if (!student) return;
+  els.deleteStudentName.textContent = student.name || '이름 미입력';
+  els.deleteStudentId.textContent = student.studentId || '미입력';
+  els.deleteStudentEmail.textContent = student.email || '미입력';
+  els.deleteConfirmInput.value = '';
+  els.confirmDeleteStudentBtn.disabled = true;
+  els.deleteStudentModal.classList.remove('hidden');
+}
+
+async function confirmDeleteStudent() {
+  const student = currentHistoryStudent;
+  if (!student || els.deleteConfirmInput.value.trim() !== DELETE_CONFIRM_TEXT) return;
+
+  els.confirmDeleteStudentBtn.disabled = true;
+  const originalText = els.confirmDeleteStudentBtn.textContent;
+  els.confirmDeleteStudentBtn.textContent = '삭제하는 중...';
+  try {
+    await backend.adminDeleteStudent(student.uid);
+    toast(`${student.name || '학생'} 계정을 삭제했습니다.`, 'success');
+    els.deleteStudentModal.classList.add('hidden');
+    els.historyModal.classList.add('hidden');
+    currentHistoryStudent = null;
+    await loadAdminDashboard({ forceRefresh: true });
+  } catch (err) {
+    console.error(err);
+    const message = err instanceof Error ? err.message : '학생 계정 삭제에 실패했습니다.';
+    toast(message, 'error');
+    els.confirmDeleteStudentBtn.disabled = false;
+  } finally {
+    els.confirmDeleteStudentBtn.textContent = originalText;
+  }
+}
+
 export function initAdminEvents() {
   els.adminWeekSelect.onchange = () => void loadAdminDashboard(); // cached — just re-renders for the newly selected week
   els.adminRefreshBtn.onclick = () => void loadAdminDashboard({ forceRefresh: true });
@@ -184,6 +226,12 @@ export function initAdminEvents() {
       void loadAdminDashboard();
     };
   });
+
+  els.openDeleteStudentBtn.onclick = openDeleteStudentModal;
+  els.deleteConfirmInput.oninput = () => {
+    els.confirmDeleteStudentBtn.disabled = els.deleteConfirmInput.value.trim() !== DELETE_CONFIRM_TEXT;
+  };
+  els.confirmDeleteStudentBtn.onclick = () => void confirmDeleteStudent();
 }
 
 async function exportExcel() {

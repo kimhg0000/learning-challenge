@@ -13,6 +13,13 @@ export interface OnboardingInput {
   goal: GoalSettings;
 }
 
+export interface DeleteStudentResult {
+  uid: string;
+  name: string;
+  studentId: string;
+  deletedWeeks: number[];
+}
+
 export interface SubmitWeekInput {
   week: number;
   photoBlob: Blob;
@@ -62,4 +69,13 @@ export interface Backend {
   adminListAllSubmissions(semesterId?: string): Promise<Submission[]>;
   adminGetGoalHistory(uid: string): Promise<GoalVersion[]>;
   adminGetProfileHistory(uid: string): Promise<ProfileHistoryEntry[]>;
+  /**
+   * Instructor-only. Permanently deletes a student's Auth account and every
+   * piece of data tied to their uid (see functions/src/index.ts for the
+   * full list). Never trust the caller's role client-side — the real
+   * FirebaseBackend implementation always goes through a privileged Cloud
+   * Function that re-derives instructor status and target protection from
+   * Firestore itself.
+   */
+  adminDeleteStudent(targetUid: string): Promise<DeleteStudentResult>;
 }

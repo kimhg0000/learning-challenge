@@ -25,7 +25,13 @@ rules_version = '2';
 //     created alongside a real private submission the same student already
 //     owns — see isLinkedToOwnSubmission().
 //
-// -----------------------------------------------------------------------
+// Program calendar: PROGRAM_START and SEMESTER_ID below MUST match
+// src/constants.ts (PROGRAM_START = 2026-09-07T00:00:00+09:00, i.e.
+// 2026-09-06T15:00:00Z; SEMESTER_ID = '2026-fall'). If you reuse this app
+// for a different semester, update BOTH this file, storage.rules, and
+// src/constants.ts together — a mismatched SEMESTER_ID here would reject
+// every real write from the deployed app.
+// ---------------------------------------------------------------------------
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -255,6 +261,19 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.anonName == request.resource.data.anonName;
 
       allow update, delete: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // adminAuditLogs/{logId} — written ONLY by the deleteStudentAccount
+    // Cloud Function via the Admin SDK (which bypasses these rules
+    // entirely), never by any client. Readable by instructors for
+    // transparency into what was deleted and by whom; contains no
+    // reflection/photo content, only identifying fields — see
+    // functions/src/index.ts.
+    // ------------------------------------------------------------------
+    match /adminAuditLogs/{logId} {
+      allow get, list: if isInstructor();
+      allow write: if false;
     }
   }
 }

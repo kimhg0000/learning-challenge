@@ -6,7 +6,7 @@ import { makeAnonName } from '../utils/text';
 import { goalSettingsChanged } from '../utils/goal';
 import { isValidGoalSettings, isValidName, isValidStudentId } from '../utils/validation';
 import type { FeedPost, GoalSettings, GoalVersion, ProfileHistoryEntry, Submission, UserProfile } from '../types';
-import type { AuthUser, Backend, OnboardingInput, SubmitWeekInput } from './types';
+import type { AuthUser, Backend, DeleteStudentResult, OnboardingInput, SubmitWeekInput } from './types';
 
 /**
  * Prototype/demo backend. Everything here lives in this browser's IndexedDB
@@ -244,6 +244,23 @@ export class LocalBackend implements Backend {
       syntheticSubmission(s.uid, s, 2, false),
     ]);
     return [...real, ...synthetic];
+  }
+
+  // Prototype-mode stand-in: the real deletion is a privileged Cloud
+  // Function that does not exist in this local, Firebase-free backend.
+  // SYNTHETIC_STUDENTS is a fixed constant, not real per-instance data, so
+  // it can't be meaningfully "deleted" — only the one real demo student's
+  // locally-stored IndexedDB state can be.
+  async adminDeleteStudent(targetUid: string): Promise<DeleteStudentResult> {
+    if (targetUid !== DEMO_STUDENT_UID) {
+      throw new Error('프로토타입 모드에서는 데모 동급생 계정을 삭제할 수 없습니다.');
+    }
+    const state = await loadState(targetUid);
+    const name = state.profile?.name || '';
+    const studentId = state.profile?.studentId || '';
+    const deletedWeeks = state.submissions.map((s) => s.week);
+    await idbDel(`demo:state:${targetUid}`);
+    return { uid: targetUid, name, studentId, deletedWeeks };
   }
 
   async listFeed(weekFilter: number): Promise<FeedPost[]> {

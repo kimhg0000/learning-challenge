@@ -126,8 +126,65 @@ export async function withRulesDisabled<T>(fn: (firestore: import('firebase/fire
   const { initializeTestEnvironment } = await import('@firebase/rules-unit-testing');
   const testEnv = await initializeTestEnvironment({ projectId: INTEGRATION_PROJECT_ID });
   try {
-    return await testEnv.withSecurityRulesDisabled((ctx) => fn(ctx.firestore()));
+    // testEnv.withSecurityRulesDisabled() awaits its callback but discards
+    // whatever it returns, so fn's result is captured into this closure
+    // variable instead of relied on as a return value.
+    let result!: T;
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      result = await fn(ctx.firestore());
+    });
+    return result;
   } finally {
     await testEnv.cleanup();
   }
+}
+
+/**
+ * Same as withRulesDisabled, but for Storage — used to check whether a photo
+ * was actually deleted. Must pass the SAME bucket name FirebaseBackend's
+ * emulator branch uses ('demo-learning-challenge.appspot.com') explicitly —
+ * ctx.storage()'s own default bucket is `gs://${projectId}` with no
+ * ".appspot.com" suffix, a different (empty) bucket in the Storage
+ * emulator's eyes, which silently makes every file look missing.
+ */
+export async function withStorageRulesDisabled<T>(fn: (storage: import('firebase/storage').FirebaseStorage) => Promise<T>): Promise<T> {
+  const { initializeTestEnvironment } = await import('@firebase/rules-unit-testing');
+  const testEnv = await initializeTestEnvironment({ projectId: INTEGRATION_PROJECT_ID });
+  try {
+    let result!: T;
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      result = await fn(ctx.storage(`gs://${INTEGRATION_PROJECT_ID}.appspot.com`));
+    });
+    return result;
+  } finally {
+    await testEnv.cleanup();
+  }
+}
+
+/** Signs up a brand-new instructor (real Auth emulator account, allowlisted via a rules-bypassing write, then ensureInstructorProfile()) and returns the ready backend + uid. */
+export async function createInstructor(email: string): Promise<{ backend: FirebaseBackend; uid: string }> {
+  const backend = new FirebaseBackend({ useEmulator: true });
+  await backend.signUpEmail(email, 'password123');
+  const uid: string = await new Promise((resolve) => {
+    const unsub = backend.onAuthChange((user) => {
+      if (user) {
+        unsub();
+        resolve(user.uid);
+      }
+    });
+  });
+  const { doc, setDoc } = await import('firebase/firestore');
+  await withRulesDisabled(async (firestore) => {
+    await setDoc(doc(firestore, 'instructorAllowlist', email.toLowerCase()), { note: 'test' });
+  });
+  await backend.ensureInstructorProfile(uid, email, '교수자');
+  return { backend, uid };
+}
+
+/** sha256Hex of a string, matching FirebaseBackend's private feedId derivation (feedId = sha256(subId)). */
+export async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }

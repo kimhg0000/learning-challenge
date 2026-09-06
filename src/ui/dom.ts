@@ -67,6 +67,11 @@ export const els = {
   historyModal: $('student-history-modal'), historyStudentName: $('history-student-name'),
   historySummary: $('history-summary'), historyGoalVersions: $('history-goal-versions'), historyWeeks: $('history-weeks'),
   historyProfileNote: $('history-profile-note'), historyProfileList: $('history-profile-list'),
+  openDeleteStudentBtn: $<HTMLButtonElement>('open-delete-student-btn'),
+
+  deleteStudentModal: $('delete-student-modal'), deleteStudentName: $('delete-student-name'),
+  deleteStudentId: $('delete-student-id'), deleteStudentEmail: $('delete-student-email'),
+  deleteConfirmInput: $<HTMLInputElement>('delete-confirm-input'), confirmDeleteStudentBtn: $<HTMLButtonElement>('confirm-delete-student-btn'),
 
   toastWrap: $('toast-wrap'),
 };

@@ -492,3 +492,30 @@ describe('users/{uid}/profileHistory/{entryId}', () => {
     await assertFails(deleteDoc(ref));
   });
 });
+
+describe('adminAuditLogs/{logId}', () => {
+  const auditEntry = {
+    action: 'deleteStudent', targetUid: STUDENT_A.uid, targetName: '김학생',
+    targetStudentId: '1234567', targetEmail: STUDENT_A.email,
+    deletedBy: INSTRUCTOR.email, deletedAt: SEED_TIMESTAMP,
+  };
+
+  it('nobody can write to adminAuditLogs from a client (Cloud Function / Admin SDK only)', async () => {
+    const instructorDb = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email }).firestore();
+    await assertFails(setDoc(doc(collection(instructorDb, 'adminAuditLogs')), auditEntry));
+    const studentDb = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await assertFails(setDoc(doc(collection(studentDb, 'adminAuditLogs')), auditEntry));
+  });
+
+  it('an instructor can read audit logs; a student cannot', async () => {
+    await seedInstructorAllowlist();
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(collection(ctx.firestore(), 'adminAuditLogs')), auditEntry);
+    });
+    const instructorDb = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email }).firestore();
+    await assertSucceeds(getDocs(collection(instructorDb, 'adminAuditLogs')));
+
+    const studentDb = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await assertFails(getDocs(collection(studentDb, 'adminAuditLogs')));
+  });
+});

@@ -280,7 +280,7 @@ export function initModalEvents() {
       if (id === 'submission-modal') resetCameraUI();
     };
   });
-  [els.submissionModal, els.detailModal, els.historyModal, els.profileEditModal].forEach((m) => {
+  [els.submissionModal, els.detailModal, els.historyModal, els.profileEditModal, els.deleteStudentModal].forEach((m) => {
     m.addEventListener('click', (e) => {
       if (e.target === m) {
         m.classList.add('hidden');

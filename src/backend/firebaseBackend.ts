@@ -31,6 +31,7 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage';
+import { getFunctions, httpsCallable, connectFunctionsEmulator, type Functions } from 'firebase/functions';
 
 import { firebaseConfig } from '../config';
 import { CHARACTER_TYPES, SEMESTER_ID, TOTAL_WEEKS } from '../constants';
@@ -40,7 +41,7 @@ import { makeAnonName } from '../utils/text';
 import { goalSettingsChanged } from '../utils/goal';
 import { isValidGoalSettings, isValidName, isValidStudentId } from '../utils/validation';
 import type { FeedPost, GoalSettings, GoalVersion, ProfileHistoryEntry, Submission, UserProfile } from '../types';
-import type { Backend, AuthUser, OnboardingInput, SubmitWeekInput } from './types';
+import type { Backend, AuthUser, DeleteStudentResult, OnboardingInput, SubmitWeekInput } from './types';
 
 export class SubmissionExistsError extends Error {
   constructor(week: number) {
@@ -87,6 +88,7 @@ export class FirebaseBackend implements Backend {
   private auth: Auth;
   private db: Firestore;
   private storage: FirebaseStorage;
+  private functions: Functions;
 
   constructor(options: FirebaseBackendOptions = {}) {
     if (options.useEmulator) {
@@ -115,6 +117,8 @@ export class FirebaseBackend implements Backend {
       connectFirestoreEmulator(this.db, '127.0.0.1', 8080);
       this.storage = getStorage(this.app);
       connectStorageEmulator(this.storage, '127.0.0.1', 9199);
+      this.functions = getFunctions(this.app);
+      connectFunctionsEmulator(this.functions, '127.0.0.1', 5001);
       return;
     }
 
@@ -131,6 +135,7 @@ export class FirebaseBackend implements Backend {
       localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
     });
     this.storage = getStorage(this.app);
+    this.functions = getFunctions(this.app);
   }
 
   onAuthChange(cb: (user: AuthUser | null) => void): () => void {
@@ -399,6 +404,19 @@ export class FirebaseBackend implements Backend {
     const q = query(collection(this.db, 'submissions'), where('semesterId', '==', semesterId));
     const qs = await getDocs(q);
     return qs.docs.map((d) => ({ id: d.id, ...d.data() }) as Submission);
+  }
+
+  // Deliberately NOT implemented with client-side Firestore/Storage/Auth
+  // calls: firestore.rules makes submissions/goalVersions/profileHistory/
+  // feedPosts permanently un-deletable from any client (instructor
+  // included), and no client may ever delete another user's Auth account.
+  // This calls a privileged Cloud Function (Admin SDK) that re-derives the
+  // caller's instructor status and the target's protected status from
+  // Firestore itself — see functions/src/index.ts.
+  async adminDeleteStudent(targetUid: string): Promise<DeleteStudentResult> {
+    const callable = httpsCallable<{ targetUid: string }, DeleteStudentResult>(this.functions, 'deleteStudentAccount');
+    const res = await callable({ targetUid });
+    return res.data;
   }
 
   async listFeed(weekFilter: number): Promise<FeedPost[]> {
