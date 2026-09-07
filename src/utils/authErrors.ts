@@ -36,3 +36,19 @@ export function authErrorMessage(mode: 'signup' | 'login', code: string | undefi
       return '로그인에 실패했습니다. 이메일/비밀번호를 확인해주세요.';
   }
 }
+
+/**
+ * Maps a failure from the POST-auth step (afterLogin()'s profile/privacy-
+ * consent reads, after Firebase Auth itself already succeeded) to a
+ * user-facing message. 'unavailable' is Firestore's own code for "couldn't
+ * reach the backend" (as opposed to a rules/permission rejection), which —
+ * together with withTimeout()'s 'timeout' marker and Auth's own
+ * 'network-request-failed' — all mean the same thing to a student: their
+ * connection, not their credentials, is the problem.
+ */
+export function postLoginErrorMessage(code: string | undefined): string {
+  if (code === 'timeout' || code === 'auth/network-request-failed' || code === 'unavailable') {
+    return '네트워크 연결을 확인한 뒤 다시 시도해주세요.';
+  }
+  return '로그인 처리 중 오류가 발생했습니다. 새로고침 후 다시 시도해주세요.';
+}

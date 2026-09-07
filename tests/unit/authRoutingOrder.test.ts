@@ -48,17 +48,79 @@ describe('afterLogin() routing order — regression guard for the privacy-consen
 });
 
 describe('handleAuthChange() retries afterLogin() once on failure — regression guard for the transient first-read-after-signin failure found in production', () => {
-  it('catches a failed afterLogin(), retries it once, and only then falls back to the generic error toast', () => {
+  function handleAuthChangeBody(): string {
     const handlerStart = src.indexOf('async function handleAuthChange');
     expect(handlerStart).toBeGreaterThan(-1);
-    const handlerBody = src.slice(handlerStart, src.indexOf('\nasync function doLogout', handlerStart));
+    return src.slice(handlerStart, src.indexOf('\nasync function doLogout', handlerStart));
+  }
 
-    const firstCallIndex = handlerBody.indexOf('await afterLogin();');
-    const retryCallIndex = handlerBody.indexOf('await afterLogin();', firstCallIndex + 1);
+  it('catches a failed afterLogin(), retries it once, and only then falls back to the generic error toast', () => {
+    const handlerBody = handleAuthChangeBody();
+
+    const firstCallIndex = handlerBody.indexOf('await withTimeout(afterLogin()');
+    const retryCallIndex = handlerBody.indexOf('await withTimeout(afterLogin()', firstCallIndex + 1);
     expect(firstCallIndex).toBeGreaterThan(-1);
     expect(retryCallIndex).toBeGreaterThan(firstCallIndex); // a SECOND call exists, after the first
 
-    const toastIndex = handlerBody.indexOf("toast('로그인 처리 중 오류가 발생했습니다");
+    const toastIndex = handlerBody.indexOf('toast(postLoginErrorMessage(');
     expect(toastIndex).toBeGreaterThan(retryCallIndex); // the generic toast only fires after the retry, never before it
+  });
+
+  it('both attempts are bounded by withTimeout() — a stalled connection can never leave the student on an infinite loading state', () => {
+    const handlerBody = handleAuthChangeBody();
+    const timeoutCalls = handlerBody.split('withTimeout(afterLogin()').length - 1;
+    expect(timeoutCalls).toBe(2); // initial attempt + one retry, both bounded
+  });
+
+  it('every exit path — success, retry-success, and final failure — resets the login UI (button state)', () => {
+    const handlerBody = handleAuthChangeBody();
+    const resetCalls = handlerBody.split('resetAuthUi();').length - 1;
+    expect(resetCalls).toBeGreaterThanOrEqual(3);
+  });
+
+  it('a stale attempt (superseded by a newer onAuthStateChanged firing) bails out instead of racing the newer attempt\'s UI', () => {
+    const handlerBody = handleAuthChangeBody();
+    expect(handlerBody).toContain('const myAttempt = ++authAttemptId;');
+    // Checked at least once after each of the two withTimeout(afterLogin()...) calls.
+    const staleChecks = handlerBody.split('if (myAttempt !== authAttemptId) return;').length - 1;
+    expect(staleChecks).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('login/signup buttons — duplicate-click and duplicate-popup guards', () => {
+  function clickHandlerBody(elId: string, nextMarker: string): string {
+    const start = src.indexOf(`${elId}.onclick = async () => {`);
+    expect(start).toBeGreaterThan(-1);
+    const end = src.indexOf(nextMarker, start);
+    expect(end).toBeGreaterThan(start);
+    return src.slice(start, end);
+  }
+
+  it('the email login/signup button bails out immediately on a duplicate click while a request is already in flight', () => {
+    const body = clickHandlerBody('els.emailAuthBtn', 'els.googleLoginBtn.onclick');
+    const guardIndex = body.indexOf('if (authFlowInFlight) return;');
+    const busyIndex = body.indexOf('setAuthUiBusy(true);');
+    expect(guardIndex).toBeGreaterThan(-1);
+    expect(busyIndex).toBeGreaterThan(-1);
+    expect(guardIndex).toBeLessThan(busyIndex); // the guard is checked BEFORE marking the UI busy, not after
+    expect(guardIndex).toBeLessThan(60); // it's the very first statement in the handler, not buried after other logic
+  });
+
+  it('the Google login button bails out immediately on a duplicate click/popup while a request is already in flight', () => {
+    const body = clickHandlerBody('els.googleLoginBtn', 'els.profileStudentId.oninput');
+    const guardIndex = body.indexOf('if (authFlowInFlight) return;');
+    const busyIndex = body.indexOf('setAuthUiBusy(true);');
+    expect(guardIndex).toBeGreaterThan(-1);
+    expect(busyIndex).toBeGreaterThan(-1);
+    expect(guardIndex).toBeLessThan(busyIndex);
+    expect(guardIndex).toBeLessThan(60);
+  });
+
+  it('setAuthUiBusy() disables both auth buttons and the mode-switch button together, so neither path can be triggered while the other is in flight', () => {
+    const start = src.indexOf('function setAuthUiBusy(busy: boolean) {');
+    const body = src.slice(start, src.indexOf('\n}', start));
+    expect(body).toContain('els.emailAuthBtn.disabled = busy;');
+    expect(body).toContain('els.googleLoginBtn.disabled = busy;');
+    expect(body).toContain('els.authSwitchBtn.disabled = busy;');
   });
 });
