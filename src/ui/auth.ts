@@ -3,6 +3,7 @@ import { PRIVACY_POLICY_VERSION } from '../config/privacy';
 import { backend } from '../backend';
 import { isValidCharacterType, isValidGoalSettings, isValidName, isValidStudentId } from '../utils/validation';
 import { needsPrivacyConsent } from '../utils/privacyConsent';
+import { authErrorMessage } from '../utils/authErrors';
 import type { CharacterType, GoalSettings } from '../types';
 import { els, showScreen, setTab, toast, type TabName } from './dom';
 import { state } from './state';
@@ -201,12 +202,14 @@ export function initAuthEvents() {
     const email = els.authEmail.value.trim();
     const pw = els.authPassword.value;
     if (!email || pw.length < 6) return toast('이메일과 6자 이상의 비밀번호를 입력해주세요.', 'error');
+    const mode = state.authMode;
     try {
-      if (state.authMode === 'signup') await backend.signUpEmail(email, pw);
+      if (mode === 'signup') await backend.signUpEmail(email, pw);
       else await backend.signInEmail(email, pw);
     } catch (e) {
       console.error(e);
-      toast('로그인에 실패했습니다. 이메일/비밀번호를 확인해주세요.', 'error');
+      const code = e && typeof e === 'object' && 'code' in e ? String((e as { code: unknown }).code) : undefined;
+      toast(authErrorMessage(mode, code), 'error');
     }
   };
 
