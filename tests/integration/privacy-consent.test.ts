@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { PRIVACY_POLICY_VERSION } from '../../src/config/privacy';
 import { needsPrivacyConsent } from '../../src/utils/privacyConsent';
-import { setupIntegrationRules, createStudent, createInstructor } from './helpers';
+import { setupIntegrationRules, createStudent, createInstructor, withRulesDisabled } from './helpers';
 
 beforeAll(async () => {
   await setupIntegrationRules();
@@ -45,6 +45,32 @@ describe('FirebaseBackend privacy consent', () => {
     const afterConsent = await backend.getPrivacyConsent(uid);
     expect(needsPrivacyConsent(afterConsent, PRIVACY_POLICY_VERSION)).toBe(false);
     expect(afterConsent!.source).toBe('existing-user');
+  });
+
+  it('an existing account that already agreed to an OLDER policy version still needs to re-consent', async () => {
+    // recordPrivacyConsent() always writes the CURRENT PRIVACY_POLICY_VERSION,
+    // so an old-version record can't be produced through the public API —
+    // seed one directly, the same way a real account that consented under a
+    // since-superseded version would actually look in Firestore.
+    const { backend, uid } = await createStudent('privacy-old-version@student.example');
+    const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+    await withRulesDisabled(async (firestore) => {
+      await setDoc(doc(firestore, 'users', uid, 'privacyConsent', 'record'), {
+        agreed: true,
+        version: '2020-01-01-v0', // deliberately older than PRIVACY_POLICY_VERSION
+        agreedAt: serverTimestamp(),
+        source: 'existing-user',
+      });
+    });
+
+    const consent = await backend.getPrivacyConsent(uid);
+    expect(consent!.version).toBe('2020-01-01-v0');
+    expect(needsPrivacyConsent(consent, PRIVACY_POLICY_VERSION)).toBe(true);
+
+    await backend.recordPrivacyConsent(uid, 'existing-user');
+    const reconsented = await backend.getPrivacyConsent(uid);
+    expect(reconsented!.version).toBe(PRIVACY_POLICY_VERSION);
+    expect(needsPrivacyConsent(reconsented, PRIVACY_POLICY_VERSION)).toBe(false);
   });
 
   it('re-recording consent overwrites the record (current-status-only, no history kept)', async () => {
