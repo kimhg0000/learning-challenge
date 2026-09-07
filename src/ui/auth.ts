@@ -1,6 +1,8 @@
 import { PROTOTYPE_MODE, isFirebaseConfigValid } from '../config';
+import { PRIVACY_POLICY_VERSION } from '../config/privacy';
 import { backend } from '../backend';
 import { isValidCharacterType, isValidGoalSettings, isValidName, isValidStudentId } from '../utils/validation';
+import { needsPrivacyConsent } from '../utils/privacyConsent';
 import type { CharacterType, GoalSettings } from '../types';
 import { els, showScreen, setTab, toast, type TabName } from './dom';
 import { state } from './state';
@@ -10,6 +12,7 @@ import { getActiveWeek } from './weekState';
 import { openSubmission } from './modals';
 import { renderHome } from './screens/home';
 import { renderWeeks } from './screens/weeks';
+import { showPrivacyConsentScreen } from './privacyConsent';
 import type { AuthUser } from '../backend/types';
 
 function showOnboardingStep(n: 1 | 2) {
@@ -38,7 +41,11 @@ function prefillOnboarding() {
   els.goalBackBtn.textContent = state.editingGoal ? '취소' : '이전';
 }
 
-async function afterLogin() {
+// Exported so ui/privacyConsent.ts can re-run routing itself once a student
+// actually agrees, instead of this module polling/awaiting a promise that
+// would otherwise dangle forever if the student logs out from the consent
+// screen without ever agreeing.
+export async function afterLogin() {
   const user = state.currentUser;
   if (!user) return;
 
@@ -53,6 +60,19 @@ async function afterLogin() {
   }
 
   state.profile = await backend.getProfile(user.uid);
+
+  // Gate BEFORE onboarding and BEFORE the main app for every student —
+  // brand-new signups and pre-existing accounts created before this feature
+  // existed are treated identically: no valid consent for the current
+  // PRIVACY_POLICY_VERSION means the consent screen must be passed first.
+  // Never auto-agree just because the account already has other data (see
+  // task requirement) — this check runs regardless of state.profile.
+  const consent = await backend.getPrivacyConsent(user.uid);
+  if (needsPrivacyConsent(consent, PRIVACY_POLICY_VERSION)) {
+    showPrivacyConsentScreen(state.profile ? 'existing-user' : 'signup');
+    return; // ui/privacyConsent.ts calls afterLogin() again once the student actually agrees
+  }
+
   if (!state.profile) {
     state.editingGoal = false;
     showScreen('onboarding');

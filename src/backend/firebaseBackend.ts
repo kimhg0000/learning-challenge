@@ -34,6 +34,7 @@ import { getStorage, ref, uploadBytes, getDownloadURL, connectStorageEmulator, t
 import { getFunctions, httpsCallable, connectFunctionsEmulator, type Functions } from 'firebase/functions';
 
 import { firebaseConfig } from '../config';
+import { PRIVACY_POLICY_VERSION } from '../config/privacy';
 import { CHARACTER_TYPES, SEMESTER_ID, TOTAL_WEEKS } from '../constants';
 import { getGrowthState } from '../utils/growth';
 import { getScheduledWindow, isWithinSubmissionWindow } from '../utils/date';
@@ -41,7 +42,7 @@ import { makeAnonName } from '../utils/text';
 import { goalSettingsChanged } from '../utils/goal';
 import { isValidGoalSettings, isValidName, isValidStudentId } from '../utils/validation';
 import type { FeedPost, GoalSettings, GoalVersion, ProfileHistoryEntry, Submission, UserProfile } from '../types';
-import type { Backend, AuthUser, DeleteStudentResult, OnboardingInput, SubmitWeekInput } from './types';
+import type { Backend, AuthUser, DeleteStudentResult, OnboardingInput, PrivacyConsentRecord, PrivacyConsentSource, SubmitWeekInput } from './types';
 
 export class SubmissionExistsError extends Error {
   constructor(week: number) {
@@ -366,6 +367,32 @@ export class FirebaseBackend implements Backend {
 
   async adminGetGoalHistory(uid: string): Promise<GoalVersion[]> {
     return this.getGoalHistory(uid);
+  }
+
+  async getPrivacyConsent(uid: string): Promise<PrivacyConsentRecord | null> {
+    const snap = await getDoc(doc(this.db, 'users', uid, 'privacyConsent', 'record'));
+    if (!snap.exists()) return null;
+    const d = snap.data() as { agreed: boolean; version: string; agreedAt: { toDate(): Date } | null; source: PrivacyConsentSource };
+    return {
+      agreed: d.agreed,
+      version: d.version,
+      agreedAt: d.agreedAt?.toDate ? d.agreedAt.toDate().toISOString() : nowIso(),
+      source: d.source,
+    };
+  }
+
+  async recordPrivacyConsent(uid: string, source: PrivacyConsentSource): Promise<PrivacyConsentRecord> {
+    await setDoc(doc(this.db, 'users', uid, 'privacyConsent', 'record'), {
+      agreed: true,
+      version: PRIVACY_POLICY_VERSION,
+      agreedAt: serverTimestamp(),
+      source,
+    });
+    return { agreed: true, version: PRIVACY_POLICY_VERSION, agreedAt: nowIso(), source };
+  }
+
+  async adminGetPrivacyConsent(uid: string): Promise<PrivacyConsentRecord | null> {
+    return this.getPrivacyConsent(uid);
   }
 
   async adminGetProfileHistory(uid: string): Promise<ProfileHistoryEntry[]> {

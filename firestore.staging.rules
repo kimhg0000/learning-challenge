@@ -181,6 +181,28 @@ service cloud.firestore {
           && request.resource.data.changedAt == request.time;
         allow update, delete: if false;
       }
+
+      // Single doc ('record') holding a student's current privacy-policy
+      // consent. Overwritten (not versioned/appended) when a student
+      // re-consents to a newer PRIVACY_POLICY_VERSION (see
+      // src/config/privacy.ts and src/utils/privacyConsent.ts) — this app
+      // deliberately keeps only "current consent status", not a full consent
+      // history. agreedAt must equal request.time so a student can never
+      // backdate/forward-date their own consent record from devtools, and
+      // only the student themselves may ever write it — instructors get
+      // read-only visibility (student-history modal) and can never consent
+      // on a student's behalf.
+      match /privacyConsent/{docId} {
+        allow get, list: if isSignedIn() && (request.auth.uid == uid || isInstructor());
+        allow create, update: if isSignedIn() && request.auth.uid == uid
+          && docId == 'record'
+          && request.resource.data.keys().hasOnly(['agreed', 'version', 'agreedAt', 'source'])
+          && request.resource.data.agreed == true
+          && request.resource.data.version is string && request.resource.data.version.size() > 0
+          && request.resource.data.agreedAt == request.time
+          && request.resource.data.source in ['signup', 'existing-user'];
+        allow delete: if false;
+      }
     }
 
     // ------------------------------------------------------------------

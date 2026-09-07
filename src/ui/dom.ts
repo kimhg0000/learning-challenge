@@ -6,11 +6,16 @@ export const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
 
 export const els = {
   authScreen: $('auth-screen'), onboardingScreen: $('onboarding-screen'), mainScreen: $('main-screen'),
+  privacyConsentScreen: $('privacy-consent-screen'),
   authEmail: $<HTMLInputElement>('auth-email'), authPassword: $<HTMLInputElement>('auth-password'),
   emailAuthBtn: $('email-auth-btn'), googleLoginBtn: $('google-login-btn'),
   authSwitchBtn: $('auth-switch-btn'), authSwitchCopy: $('auth-switch-copy'), backendWarning: $('backend-warning'),
   prototypeEntry: $('prototype-entry'), demoLoginBtn: $('demo-login-btn'), demoInstructorBtn: $('demo-instructor-btn'),
   demoRoleRow: $('demo-role-row'), demoResetBtn: $('demo-reset-btn'), demoClickStatus: $('demo-click-status'),
+  privacyPolicyLink: $('privacy-policy-link'), privacyPolicyModal: $('privacy-policy-modal'), privacyPolicyBody: $('privacy-policy-body'),
+
+  privacyConsentCheckbox: $<HTMLInputElement>('privacy-consent-checkbox'), privacyConsentDetailBtn: $('privacy-consent-detail-btn'),
+  privacyConsentAgreeBtn: $<HTMLButtonElement>('privacy-consent-agree-btn'), privacyConsentLogout: $('privacy-consent-logout'),
 
   profileStep: $('profile-step'), goalStep: $('goal-step'),
   profileName: $<HTMLInputElement>('profile-name'), profileStudentId: $<HTMLInputElement>('profile-student-id'),
@@ -67,6 +72,7 @@ export const els = {
   historyModal: $('student-history-modal'), historyStudentName: $('history-student-name'),
   historySummary: $('history-summary'), historyGoalVersions: $('history-goal-versions'), historyWeeks: $('history-weeks'),
   historyProfileNote: $('history-profile-note'), historyProfileList: $('history-profile-list'),
+  historyPrivacyConsent: $('history-privacy-consent'),
   openDeleteStudentBtn: $<HTMLButtonElement>('open-delete-student-btn'),
 
   deleteStudentModal: $('delete-student-modal'), deleteStudentName: $('delete-student-name'),
@@ -86,9 +92,10 @@ function escapeToastText(s: string) {
   return s.replace(/[&<>]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch] as string));
 }
 
-export type ScreenName = 'auth' | 'onboarding' | 'main';
+export type ScreenName = 'auth' | 'privacyConsent' | 'onboarding' | 'main';
 export function showScreen(name: ScreenName) {
   els.authScreen.classList.toggle('hidden', name !== 'auth');
+  els.privacyConsentScreen.classList.toggle('hidden', name !== 'privacyConsent');
   els.onboardingScreen.classList.toggle('hidden', name !== 'onboarding');
   els.mainScreen.classList.toggle('hidden', name !== 'main');
 }

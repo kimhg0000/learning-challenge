@@ -1,4 +1,6 @@
 import { formatDate, formatDateTime } from '../../utils/date';
+import { needsPrivacyConsent } from '../../utils/privacyConsent';
+import { PRIVACY_POLICY_VERSION } from '../../config/privacy';
 import { getGrowthState } from '../../utils/growth';
 import { authoritativeSubmissionDate, isPunctualSubmission } from '../../utils/punctual';
 import { safeText } from '../../utils/text';
@@ -157,13 +159,18 @@ export async function openStudentHistory(uid: string) {
   els.historyGoalVersions.innerHTML = '<div class="admin-history-item muted">불러오는 중...</div>';
   els.historyWeeks.innerHTML = computeStudentWeekRows(userSubs).map(historyWeekCardHtml).join('');
   els.historyProfileNote.classList.add('hidden');
+  els.historyPrivacyConsent.textContent = '개인정보 동의 · 불러오는 중...';
   els.historyModal.classList.remove('hidden');
 
-  const [history, profileHistory] = await Promise.all([
+  const [history, profileHistory, consent] = await Promise.all([
     backend.adminGetGoalHistory(uid),
     backend.adminGetProfileHistory(uid),
+    backend.adminGetPrivacyConsent(uid),
   ]);
   els.historyGoalVersions.innerHTML = goalHistoryHtml(history);
+  els.historyPrivacyConsent.textContent = needsPrivacyConsent(consent, PRIVACY_POLICY_VERSION)
+    ? '개인정보 동의 미완료'
+    : `개인정보 동의 ${safeText(consent!.version)} · ${safeText(formatDateTime(new Date(consent!.agreedAt)))}`;
   if (profileHistory.length) {
     els.historyProfileList.innerHTML = profileHistory
       .map(
