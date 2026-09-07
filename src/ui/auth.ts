@@ -95,7 +95,22 @@ async function handleAuthChange(user: AuthUser | null) {
       await afterLogin();
     } catch (err) {
       console.error(err);
-      toast('로그인 처리 중 오류가 발생했습니다. 새로고침 후 다시 시도해주세요.', 'error');
+      // The very first Firestore read right after a fresh sign-in/sign-up
+      // can transiently fail (a newly-established connection not yet fully
+      // synced with the new auth credential can briefly surface as a
+      // spurious permission-denied/network error) — confirmed by reproducing
+      // this in production: the exact same reads, issued a moment later with
+      // a fresh REST call using the same user's ID token, succeed every
+      // time. Retry once after a short delay before giving up, instead of
+      // immediately dead-ending the student on a real account that would
+      // otherwise work on the very next attempt.
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        await afterLogin();
+      } catch (retryErr) {
+        console.error(retryErr);
+        toast('로그인 처리 중 오류가 발생했습니다. 새로고침 후 다시 시도해주세요.', 'error');
+      }
     }
   } else {
     state.currentUser = null;

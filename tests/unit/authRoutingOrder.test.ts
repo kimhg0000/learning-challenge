@@ -46,3 +46,19 @@ describe('afterLogin() routing order — regression guard for the privacy-consen
     expect(instructorBlock.trim().endsWith('return;')).toBe(true);
   });
 });
+
+describe('handleAuthChange() retries afterLogin() once on failure — regression guard for the transient first-read-after-signin failure found in production', () => {
+  it('catches a failed afterLogin(), retries it once, and only then falls back to the generic error toast', () => {
+    const handlerStart = src.indexOf('async function handleAuthChange');
+    expect(handlerStart).toBeGreaterThan(-1);
+    const handlerBody = src.slice(handlerStart, src.indexOf('\nasync function doLogout', handlerStart));
+
+    const firstCallIndex = handlerBody.indexOf('await afterLogin();');
+    const retryCallIndex = handlerBody.indexOf('await afterLogin();', firstCallIndex + 1);
+    expect(firstCallIndex).toBeGreaterThan(-1);
+    expect(retryCallIndex).toBeGreaterThan(firstCallIndex); // a SECOND call exists, after the first
+
+    const toastIndex = handlerBody.indexOf("toast('로그인 처리 중 오류가 발생했습니다");
+    expect(toastIndex).toBeGreaterThan(retryCallIndex); // the generic toast only fires after the retry, never before it
+  });
+});

@@ -17,6 +17,8 @@ export function authErrorMessage(mode: 'signup' | 'login', code: string | undefi
         return '올바른 이메일 형식이 아닙니다.';
       case 'auth/weak-password':
         return '비밀번호는 6자 이상이어야 합니다.';
+      case 'auth/network-request-failed':
+        return '네트워크 연결을 확인한 뒤 다시 시도해주세요.';
       default:
         return '회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.';
     }
@@ -28,6 +30,8 @@ export function authErrorMessage(mode: 'signup' | 'login', code: string | undefi
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
       return '이메일 또는 비밀번호가 올바르지 않습니다.';
+    case 'auth/network-request-failed':
+      return '네트워크 연결을 확인한 뒤 다시 시도해주세요.';
     default:
       return '로그인에 실패했습니다. 이메일/비밀번호를 확인해주세요.';
   }

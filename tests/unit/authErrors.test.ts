@@ -14,8 +14,12 @@ describe('authErrorMessage', () => {
     expect(authErrorMessage('signup', 'auth/weak-password')).toBe('비밀번호는 6자 이상이어야 합니다.');
   });
 
-  it('signup: an unrecognized/unexpected code falls back to a signup-specific generic message', () => {
-    expect(authErrorMessage('signup', 'auth/network-request-failed')).toBe('회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.');
+  it('signup: a network failure gets a network-specific message, not the generic fallback', () => {
+    expect(authErrorMessage('signup', 'auth/network-request-failed')).toBe('네트워크 연결을 확인한 뒤 다시 시도해주세요.');
+  });
+
+  it('signup: a truly unrecognized/unexpected code falls back to a signup-specific generic message', () => {
+    expect(authErrorMessage('signup', 'auth/some-unknown-code')).toBe('회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.');
     expect(authErrorMessage('signup', undefined)).toBe('회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.');
   });
 
@@ -29,8 +33,12 @@ describe('authErrorMessage', () => {
     expect(authErrorMessage('login', 'auth/invalid-email')).toBe('올바른 이메일 형식이 아닙니다.');
   });
 
-  it('login: an unrecognized/unexpected code falls back to the existing generic login message', () => {
-    expect(authErrorMessage('login', 'auth/network-request-failed')).toBe('로그인에 실패했습니다. 이메일/비밀번호를 확인해주세요.');
+  it('login: a network failure gets a network-specific message, not "check your password"', () => {
+    expect(authErrorMessage('login', 'auth/network-request-failed')).toBe('네트워크 연결을 확인한 뒤 다시 시도해주세요.');
+  });
+
+  it('login: a truly unrecognized/unexpected code falls back to the existing generic login message', () => {
+    expect(authErrorMessage('login', 'auth/some-unknown-code')).toBe('로그인에 실패했습니다. 이메일/비밀번호를 확인해주세요.');
     expect(authErrorMessage('login', undefined)).toBe('로그인에 실패했습니다. 이메일/비밀번호를 확인해주세요.');
   });
 
