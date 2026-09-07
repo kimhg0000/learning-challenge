@@ -3,7 +3,8 @@ import { PRIVACY_POLICY_VERSION } from '../config/privacy';
 import { backend } from '../backend';
 import { isValidCharacterType, isValidGoalSettings, isValidName, isValidStudentId } from '../utils/validation';
 import { needsPrivacyConsent } from '../utils/privacyConsent';
-import { authErrorMessage } from '../utils/authErrors';
+import { authErrorMessage, postLoginErrorMessage } from '../utils/authErrors';
+import { withTimeout } from '../utils/withTimeout';
 import type { CharacterType, GoalSettings } from '../types';
 import { els, showScreen, setTab, toast, type TabName } from './dom';
 import { state } from './state';
@@ -88,13 +89,55 @@ export async function afterLogin() {
   setTab('home');
 }
 
+// --- Login-button UX guards (duplicate-click / duplicate-popup prevention,
+// loading state, and a bounded wait for the post-auth profile/consent
+// reads) — see initAuthEvents() for where these are worn by the actual
+// click handlers. None of this touches the consent-gate decision logic in
+// afterLogin() itself, only how long the UI is willing to wait for it and
+// what the login/signup buttons show while it runs.
+let authFlowInFlight = false;
+
+function setAuthUiBusy(busy: boolean) {
+  authFlowInFlight = busy;
+  els.emailAuthBtn.disabled = busy;
+  els.googleLoginBtn.disabled = busy;
+  els.authSwitchBtn.disabled = busy;
+}
+
+/** Restores the auth screen's buttons to their normal, clickable idle state. Safe to call even after the screen has already switched away (e.g. on successful login) — the buttons are just off-screen at that point. */
+function resetAuthUi() {
+  setAuthUiBusy(false);
+  els.emailAuthBtn.textContent = state.authMode === 'login' ? '로그인' : '회원가입';
+  els.googleLoginBtnLabel.textContent = 'Google 계정으로 계속';
+}
+
+// A hung Firestore read (e.g. a genuinely stalled connection) would
+// otherwise leave the student staring at a blank/loading auth screen
+// forever — withTimeout() races afterLogin() against this bounded wait so
+// there is always an outcome (see utils/withTimeout.ts).
+const POST_LOGIN_TIMEOUT_MS = 10000;
+
+function errorCode(err: unknown): string | undefined {
+  return err && typeof err === 'object' && 'code' in err ? String((err as { code: unknown }).code) : undefined;
+}
+
+// Bumped on every onAuthStateChanged firing so a stale attempt — e.g. one
+// that missed the POST_LOGIN_TIMEOUT_MS window and only resolves/rejects
+// afterwards — can detect it's been superseded and skip touching the UI,
+// instead of racing a newer attempt's screen/button state.
+let authAttemptId = 0;
+
 async function handleAuthChange(user: AuthUser | null) {
   if (user) {
     state.currentUser = user;
+    const myAttempt = ++authAttemptId;
     try {
-      await afterLogin();
+      await withTimeout(afterLogin(), POST_LOGIN_TIMEOUT_MS);
+      if (myAttempt !== authAttemptId) return;
+      resetAuthUi();
     } catch (err) {
       console.error(err);
+      if (myAttempt !== authAttemptId) return;
       // The very first Firestore read right after a fresh sign-in/sign-up
       // can transiently fail (a newly-established connection not yet fully
       // synced with the new auth credential can briefly surface as a
@@ -106,16 +149,23 @@ async function handleAuthChange(user: AuthUser | null) {
       // otherwise work on the very next attempt.
       try {
         await new Promise((resolve) => setTimeout(resolve, 1200));
-        await afterLogin();
+        if (myAttempt !== authAttemptId) return;
+        await withTimeout(afterLogin(), POST_LOGIN_TIMEOUT_MS);
+        if (myAttempt !== authAttemptId) return;
+        resetAuthUi();
       } catch (retryErr) {
         console.error(retryErr);
-        toast('로그인 처리 중 오류가 발생했습니다. 새로고침 후 다시 시도해주세요.', 'error');
+        if (myAttempt !== authAttemptId) return;
+        toast(postLoginErrorMessage(errorCode(retryErr)), 'error');
+        resetAuthUi();
       }
     }
   } else {
+    authAttemptId++; // supersede any attempt still in flight from a previous session
     state.currentUser = null;
     state.profile = null;
     state.submissions = [];
+    resetAuthUi();
     showScreen('auth');
   }
 }
@@ -214,26 +264,49 @@ export function initAuthEvents() {
   };
 
   els.emailAuthBtn.onclick = async () => {
+    if (authFlowInFlight) return; // duplicate-click guard — button is also visually disabled while busy
     const email = els.authEmail.value.trim();
     const pw = els.authPassword.value;
     if (!email || pw.length < 6) return toast('이메일과 6자 이상의 비밀번호를 입력해주세요.', 'error');
     const mode = state.authMode;
+    setAuthUiBusy(true);
+    els.emailAuthBtn.textContent = mode === 'signup' ? '회원가입 중...' : '로그인 중...';
     try {
       if (mode === 'signup') await backend.signUpEmail(email, pw);
       else await backend.signInEmail(email, pw);
+      // Success: intentionally leave the buttons in the busy state — Firebase's
+      // onAuthStateChanged -> handleAuthChange() now owns the rest of the
+      // flow (privacy gate / onboarding / main) and is the one that resets
+      // the UI once that actually finishes, succeeds, or times out.
     } catch (e) {
       console.error(e);
-      const code = e && typeof e === 'object' && 'code' in e ? String((e as { code: unknown }).code) : undefined;
-      toast(authErrorMessage(mode, code), 'error');
+      toast(authErrorMessage(mode, errorCode(e)), 'error');
+      resetAuthUi();
     }
   };
 
   els.googleLoginBtn.onclick = async () => {
+    if (authFlowInFlight) return; // duplicate-click / duplicate-popup guard
+    setAuthUiBusy(true);
+    els.googleLoginBtnLabel.textContent = 'Google 로그인 중...';
     try {
       await backend.signInGoogle();
+      // Popup success: same handoff to handleAuthChange() as above. A
+      // redirect fallback navigates the whole page away, so there is
+      // nothing left here to reset either way.
     } catch (e) {
       console.error(e);
-      toast('Google 로그인에 실패했습니다.', 'error');
+      const code = errorCode(e);
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        // The student deliberately closed the popup, or double-clicked and
+        // triggered a second popup request that Firebase itself cancelled —
+        // neither is a real failure worth an error toast.
+      } else if (code === 'auth/network-request-failed') {
+        toast('네트워크 연결을 확인한 뒤 다시 시도해주세요.', 'error');
+      } else {
+        toast('Google 로그인에 실패했습니다.', 'error');
+      }
+      resetAuthUi();
     }
   };
 
