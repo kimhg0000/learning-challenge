@@ -493,6 +493,87 @@ describe('users/{uid}/profileHistory/{entryId}', () => {
   });
 });
 
+describe('users/{uid}/privacyConsent/record', () => {
+  function consentPayload(overrides: Partial<Record<string, unknown>> = {}) {
+    return {
+      agreed: true,
+      version: '2026-09-07-v1',
+      agreedAt: serverTimestamp(),
+      source: 'signup',
+      ...overrides,
+    };
+  }
+
+  it('a student can create their own consent record', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await assertSucceeds(setDoc(doc(db, 'users', STUDENT_A.uid, 'privacyConsent', 'record'), consentPayload()));
+  });
+
+  it('a student can re-consent (overwrite) their own record when the policy version changes', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    const ref = doc(db, 'users', STUDENT_A.uid, 'privacyConsent', 'record');
+    await assertSucceeds(setDoc(ref, consentPayload({ version: '2026-09-07-v1' })));
+    await assertSucceeds(setDoc(ref, consentPayload({ version: '2027-01-01-v2' })));
+  });
+
+  it('rejects a doc id other than "record"', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await assertFails(setDoc(doc(db, 'users', STUDENT_A.uid, 'privacyConsent', 'other'), consentPayload()));
+  });
+
+  it('rejects agreed:false — a consent record can never be stored as "not agreed"', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await assertFails(setDoc(doc(db, 'users', STUDENT_A.uid, 'privacyConsent', 'record'), consentPayload({ agreed: false })));
+  });
+
+  it('rejects a client-supplied agreedAt instead of the serverTimestamp sentinel (anti-backdating)', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await assertFails(
+      setDoc(doc(db, 'users', STUDENT_A.uid, 'privacyConsent', 'record'), consentPayload({ agreedAt: Timestamp.fromDate(new Date('2020-01-01')) })),
+    );
+  });
+
+  it('rejects a smuggled extra field', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await assertFails(setDoc(doc(db, 'users', STUDENT_A.uid, 'privacyConsent', 'record'), consentPayload({ note: 'x' })));
+  });
+
+  it('rejects an invalid source value', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await assertFails(setDoc(doc(db, 'users', STUDENT_A.uid, 'privacyConsent', 'record'), consentPayload({ source: 'forged' })));
+  });
+
+  it('a student CANNOT write another student\'s consent record', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    await assertFails(setDoc(doc(db, 'users', STUDENT_B.uid, 'privacyConsent', 'record'), consentPayload()));
+  });
+
+  it('a student cannot read another student\'s consent record; an instructor can', async () => {
+    await seedInstructorAllowlist();
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'users', STUDENT_A.uid, 'privacyConsent', 'record'), consentPayload({ agreedAt: SEED_TIMESTAMP }));
+    });
+    const otherStudentDb = testEnv.authenticatedContext(STUDENT_B.uid, { email: STUDENT_B.email }).firestore();
+    await assertFails(getDoc(doc(otherStudentDb, 'users', STUDENT_A.uid, 'privacyConsent', 'record')));
+
+    const instructorDb = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email }).firestore();
+    await assertSucceeds(getDoc(doc(instructorDb, 'users', STUDENT_A.uid, 'privacyConsent', 'record')));
+  });
+
+  it('an instructor cannot write a consent record on a student\'s behalf', async () => {
+    await seedInstructorAllowlist();
+    const instructorDb = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email }).firestore();
+    await assertFails(setDoc(doc(instructorDb, 'users', STUDENT_A.uid, 'privacyConsent', 'record'), consentPayload()));
+  });
+
+  it('a consent record can never be deleted', async () => {
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    const ref = doc(db, 'users', STUDENT_A.uid, 'privacyConsent', 'record');
+    await setDoc(ref, consentPayload());
+    await assertFails(deleteDoc(ref));
+  });
+});
+
 describe('adminAuditLogs/{logId}', () => {
   const auditEntry = {
     action: 'deleteStudent', targetUid: STUDENT_A.uid, targetName: '김학생',

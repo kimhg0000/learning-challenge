@@ -42,7 +42,34 @@
     <button id="email-auth-btn" class="btn btn-primary" style="margin-top:11px">로그인</button>
     <div class="auth-switch"><span id="auth-switch-copy">계정이 없나요?</span> <button id="auth-switch-btn">회원가입</button></div>
     <div id="backend-warning" class="setup-warning hidden">현재 Firebase 프로젝트가 연결되지 않았습니다. .env 설정을 확인해주세요.</div>
+    <button id="privacy-policy-link" class="text-btn" type="button" style="margin-top:18px;width:100%;text-align:center">개인정보 처리방침</button>
   </section>
+
+  <!-- PRIVACY CONSENT -->
+  <section id="privacy-consent-screen" class="screen hidden">
+    <div class="topbar"><div class="brand-mini">PRIVACY CONSENT</div><button id="privacy-consent-logout" class="icon-btn" aria-label="뒤로">↪</button></div>
+    <div class="eyebrow">시작하기 전에</div>
+    <h1>개인정보 수집·이용에<br>동의해주세요.</h1>
+    <p class="body-sm muted" style="margin-top:10px">15주 챌린지 참여자 확인, 학습 인증·성찰 기록 관리, 교수자의 제출 현황 관리를 위해 아래 항목에 동의가 필요합니다.</p>
+    <div class="panel plain" style="margin-top:16px">
+      <label class="consent-check-row">
+        <input id="privacy-consent-checkbox" type="checkbox">
+        <span><b>[필수]</b> 개인정보 수집·이용에 동의합니다.</span>
+      </label>
+      <button id="privacy-consent-detail-btn" class="text-btn" type="button" style="margin-top:8px">자세히 보기</button>
+    </div>
+    <p class="helper">동의하지 않을 권리가 있습니다. 다만 동의하지 않을 경우 이 웹앱을 통한 학습 챌린지 참여 및 과제 제출이 제한될 수 있습니다. 대체 제출이 필요하면 담당 교수자에게 문의해주세요.</p>
+    <button id="privacy-consent-agree-btn" class="btn btn-primary" style="margin-top:18px" disabled>동의하고 계속하기</button>
+  </section>
+
+  <!-- PRIVACY POLICY (자세히 보기 / 개인정보 처리방침) -->
+  <div id="privacy-policy-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-handle"></div>
+      <div class="modal-head"><div><div class="eyebrow">PRIVACY POLICY</div><h2>개인정보 수집·이용 안내</h2></div><button class="close-btn" data-close="privacy-policy-modal" aria-label="닫기">✕</button></div>
+      <div id="privacy-policy-body" class="privacy-policy-body"></div>
+    </div>
+  </div>
 
   <!-- ONBOARDING -->
   <section id="onboarding-screen" class="screen hidden">
@@ -244,11 +271,13 @@
         <button id="prototype-photo-btn" class="btn btn-secondary hidden" style="width:100%;margin-top:9px" type="button">🧪 테스트 사진 생성</button>
         <button id="camera-retake-btn" class="btn btn-secondary hidden" style="width:100%;margin-top:9px" type="button">다시 촬영</button>
         <p class="helper" style="margin-top:8px">인증 시각은 사진을 제출한 시각을 기준으로 기록됩니다.</p>
+        <p class="helper">인증사진에는 학습 인증에 불필요한 타인의 얼굴이나 개인정보가 포함되지 않도록 주의해 주세요.</p>
       </div>
       <div id="prototype-punctual-box" class="prototype-banner hidden" style="margin-top:12px"><strong>🧪 정시 배지 테스트</strong><p>현재 날짜가 실제 운영기간 밖이어도 배지 UI를 확인할 수 있습니다.</p><label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12px"><input id="prototype-punctual-check" type="checkbox"> 이번 테스트 제출을 '정해진 시간에 실천'으로 가정</label></div>
       <div class="field"><label><span class="step-num">2</span> 오늘의 성찰</label>
         <p class="helper" style="margin:0 0 8px">이번 주 실천은 어땠나요? 다음 주에는 무엇을 유지하거나 바꾸고 싶나요?</p>
-        <textarea id="reflection-text" class="textarea" maxlength="700" placeholder="오늘 어떤 행동을 실천했는지, 잘된 점과 다음 주 다짐을 짧게 적어주세요."></textarea><div class="helper"><span id="reflection-count">0</span>/700 · 최소 10자 이상</div></div>
+        <textarea id="reflection-text" class="textarea" maxlength="700" placeholder="오늘 어떤 행동을 실천했는지, 잘된 점과 다음 주 다짐을 짧게 적어주세요."></textarea><div class="helper"><span id="reflection-count">0</span>/700 · 최소 10자 이상</div>
+        <p class="helper">성찰에는 학습과 무관한 민감한 개인정보를 작성하지 않도록 주의해 주세요.</p></div>
       <button id="submit-final-btn" class="btn btn-primary" style="width:100%;margin-top:16px">인증 제출하고 주차 완료</button>
     </div>
   </div>
@@ -262,7 +291,7 @@
   <div id="goal-history-modal" class="modal hidden"><div class="modal-card"><div class="modal-handle"></div><div class="modal-head"><div><div class="eyebrow">GOAL HISTORY</div><h2>목표 변경 이력</h2></div><button class="close-btn" data-close="goal-history-modal" aria-label="닫기">✕</button></div><div class="panel plain" style="padding:13px;margin-bottom:12px"><div class="body-sm">목표를 수정해도 이전 설정은 삭제되지 않습니다. 가장 최근 버전이 현재 적용 중인 목표입니다.</div></div><div id="goal-history-list" class="history-list"></div></div></div>
 
   <!-- STUDENT HISTORY MODAL (instructor view) -->
-  <div id="student-history-modal" class="modal hidden"><div class="modal-card wide"><div class="modal-handle"></div><div class="modal-head"><div><div class="eyebrow">STUDENT HISTORY</div><h2 id="history-student-name">이름</h2></div><button class="close-btn" data-close="student-history-modal" aria-label="닫기">✕</button></div><div id="history-summary" class="history-summary-grid"></div><details id="history-profile-note" class="goal-history-details standalone hidden"><summary>이름·학번 변경 이력 있음<span class="chev-ico">▾</span></summary><div id="history-profile-list" class="admin-history-list"></div></details><details class="goal-history-details standalone"><summary>목표 변경 이력<span class="chev-ico">▾</span></summary><div id="history-goal-versions" class="admin-history-list"></div></details><div class="small muted" style="margin:16px 0 8px">15주 전체 기록</div><div id="history-weeks" class="history-weeks-timeline"></div><button id="open-delete-student-btn" class="btn btn-danger" style="width:100%;margin-top:18px">학생 계정 삭제</button></div></div>
+  <div id="student-history-modal" class="modal hidden"><div class="modal-card wide"><div class="modal-handle"></div><div class="modal-head"><div><div class="eyebrow">STUDENT HISTORY</div><h2 id="history-student-name">이름</h2></div><button class="close-btn" data-close="student-history-modal" aria-label="닫기">✕</button></div><div id="history-summary" class="history-summary-grid"></div><div id="history-privacy-consent" class="small muted" style="margin:-4px 0 12px">개인정보 동의 · 불러오는 중...</div><details id="history-profile-note" class="goal-history-details standalone hidden"><summary>이름·학번 변경 이력 있음<span class="chev-ico">▾</span></summary><div id="history-profile-list" class="admin-history-list"></div></details><details class="goal-history-details standalone"><summary>목표 변경 이력<span class="chev-ico">▾</span></summary><div id="history-goal-versions" class="admin-history-list"></div></details><div class="small muted" style="margin:16px 0 8px">15주 전체 기록</div><div id="history-weeks" class="history-weeks-timeline"></div><button id="open-delete-student-btn" class="btn btn-danger" style="width:100%;margin-top:18px">학생 계정 삭제</button></div></div>
 
   <!-- DELETE STUDENT CONFIRMATION MODAL (instructor view) -->
   <div id="delete-student-modal" class="modal hidden"><div class="modal-card"><div class="modal-handle"></div><div class="modal-head"><div><div class="eyebrow">DELETE STUDENT</div><h2>학생 계정 삭제</h2></div><button class="close-btn" data-close="delete-student-modal" aria-label="닫기">✕</button></div><div class="panel plain" style="padding:13px;margin-bottom:12px"><div class="stat"><span>이름</span><b id="delete-student-name"></b></div><div class="stat"><span>학번</span><b id="delete-student-id"></b></div><div class="stat"><span>이메일</span><b id="delete-student-email"></b></div></div><p class="helper" style="color:var(--danger)">이 학생 계정과 제출 기록을 삭제하시겠습니까?<br>삭제 후 복구할 수 없습니다.</p><div class="field"><label for="delete-confirm-input">계속하려면 아래에 "삭제"를 입력하세요</label><input id="delete-confirm-input" class="input" placeholder="삭제" autocomplete="off"></div><button id="confirm-delete-student-btn" class="btn btn-danger" style="width:100%;margin-top:12px" disabled>학생 계정 영구 삭제</button></div></div>

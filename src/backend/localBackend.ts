@@ -1,12 +1,13 @@
 import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
 import { CHARACTER_TYPES, SEMESTER_ID } from '../constants';
+import { PRIVACY_POLICY_VERSION } from '../config/privacy';
 import { getGrowthState } from '../utils/growth';
 import { getScheduledWindow } from '../utils/date';
 import { makeAnonName } from '../utils/text';
 import { goalSettingsChanged } from '../utils/goal';
 import { isValidGoalSettings, isValidName, isValidStudentId } from '../utils/validation';
 import type { FeedPost, GoalSettings, GoalVersion, ProfileHistoryEntry, Submission, UserProfile } from '../types';
-import type { AuthUser, Backend, DeleteStudentResult, OnboardingInput, SubmitWeekInput } from './types';
+import type { AuthUser, Backend, DeleteStudentResult, OnboardingInput, PrivacyConsentRecord, PrivacyConsentSource, SubmitWeekInput } from './types';
 
 /**
  * Prototype/demo backend. Everything here lives in this browser's IndexedDB
@@ -197,6 +198,21 @@ export class LocalBackend implements Backend {
   async adminGetGoalHistory(uid: string): Promise<GoalVersion[]> {
     if (uid === 'demo-classmate-1' || uid === 'demo-classmate-2') return [];
     return this.getGoalHistory(uid);
+  }
+
+  // Prototype/demo mode never shows the privacy-consent screen — it has no
+  // real student data to protect, and gating the click-through demo behind a
+  // consent step would just add friction for the instructors clicking
+  // through it pre-launch. Always report "already agreed" so the existing
+  // demo flow (see ui/auth.ts afterLogin()) is completely unaffected.
+  async getPrivacyConsent(): Promise<PrivacyConsentRecord | null> {
+    return { agreed: true, version: PRIVACY_POLICY_VERSION, agreedAt: nowIso(), source: 'signup' };
+  }
+  async recordPrivacyConsent(_uid: string, source: PrivacyConsentSource): Promise<PrivacyConsentRecord> {
+    return { agreed: true, version: PRIVACY_POLICY_VERSION, agreedAt: nowIso(), source };
+  }
+  async adminGetPrivacyConsent(): Promise<PrivacyConsentRecord | null> {
+    return this.getPrivacyConsent();
   }
 
   async updateProfile(uid: string, next: { name: string; studentId: string }): Promise<UserProfile> {

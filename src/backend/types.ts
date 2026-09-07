@@ -20,6 +20,17 @@ export interface DeleteStudentResult {
   deletedWeeks: number[];
 }
 
+export type PrivacyConsentSource = 'signup' | 'existing-user';
+
+export interface PrivacyConsentRecord {
+  agreed: boolean;
+  /** The PRIVACY_POLICY_VERSION (see config/privacy.ts) the student agreed to. */
+  version: string;
+  /** ISO string, denormalized from the Firestore server timestamp once read back — never client-supplied (see firestore.rules). */
+  agreedAt: string;
+  source: PrivacyConsentSource;
+}
+
 export interface SubmitWeekInput {
   week: number;
   photoBlob: Blob;
@@ -58,6 +69,13 @@ export interface Backend {
 
   isInstructor(email: string | null): Promise<boolean>;
   ensureInstructorProfile(uid: string, email: string, displayName: string | null): Promise<UserProfile>;
+
+  /** Null when the student has never recorded consent (brand-new account, or an account created before this feature existed). */
+  getPrivacyConsent(uid: string): Promise<PrivacyConsentRecord | null>;
+  /** Records agreement to the CURRENT PRIVACY_POLICY_VERSION (config/privacy.ts) for the signed-in student. agreedAt is always a Firestore server timestamp, never client-supplied. */
+  recordPrivacyConsent(uid: string, source: PrivacyConsentSource): Promise<PrivacyConsentRecord>;
+  /** Instructor-facing read of a student's consent status (student-history modal). Never writes on the student's behalf. */
+  adminGetPrivacyConsent(uid: string): Promise<PrivacyConsentRecord | null>;
 
   getMySubmissions(uid: string): Promise<Submission[]>;
   submitWeek(uid: string, profile: UserProfile, input: SubmitWeekInput): Promise<Submission>;
