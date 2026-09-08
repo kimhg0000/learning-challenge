@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 // only the JS but leaving stray markup behind would still leave a visible,
 // non-functional button on screen.
 const html = readFileSync('index.html', 'utf8');
+const modalsSrc = readFileSync('src/ui/modals.ts', 'utf8');
 
 describe('submission modal: live camera removed, native-camera-app capture kept', () => {
   it('no live getUserMedia video preview or its start/capture buttons remain', () => {
@@ -26,9 +27,27 @@ describe('submission modal: live camera removed, native-camera-app capture kept'
   });
 });
 
+describe('date/time watermark removed: no canvas stamping of the proof photo', () => {
+  it('no watermark-drawing helpers (timestamp stamp, rounded badge box, canvas re-encode of a captured photo) remain in modals.ts', () => {
+    expect(modalsSrc).not.toMatch(/addTimestamp|roundRect|stampImageSource/);
+    expect(modalsSrc).not.toContain('toDataURL');
+    expect(modalsSrc).not.toContain('readAsDataURL');
+  });
+
+  it('the captured/selected photo is previewed via an object URL (the original file), not decoded into a canvas', () => {
+    expect(modalsSrc).toContain('URL.createObjectURL');
+    expect(modalsSrc).toContain('URL.revokeObjectURL');
+  });
+
+  it('the camera placeholder no longer claims a date/time is stamped onto the photo', () => {
+    expect(html).not.toContain('사진 오른쪽 아래');
+    expect(html).not.toContain('자동으로 기록됩니다');
+  });
+});
+
 describe('submission time is explained as server-confirmed submit time, not photo capture time', () => {
-  it('the submission modal tells students the recorded time is when the submission was sent, not when the photo was taken', () => {
-    expect(html).toContain('인증 시각은 사진을 제출한 시각을 기준으로 기록됩니다.');
+  it('the submission modal tells students the recorded time is the server time the submission was sent, not when the photo was taken', () => {
+    expect(html).toContain('인증 시각은 사진을 제출한 서버 시각을 기준으로 기록됩니다.');
   });
 
   it('the home screen explains the punctual badge rule without implying the photo\'s own timestamp is checked', () => {

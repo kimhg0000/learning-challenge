@@ -1,6 +1,6 @@
 #!/usr/bin/env -S npx tsx --env-file=.env.staging
 // Creates (or verifies) a single fixed-credential staging student account for
-// manual PC photo-upload QA (file picker -> watermark -> reflection -> submit).
+// manual PC photo-upload QA (file picker -> preview -> reflection -> submit).
 // Idempotent: safe to re-run — if the account already exists this just signs
 // in and confirms onboarding is complete instead of erroring out.
 //

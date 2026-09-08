@@ -471,9 +471,13 @@ export class FirebaseBackend implements Backend {
     // 1) Upload the private proof photo FIRST. If this fails, we stop here —
     //    no Firestore document is ever written, so there is no way to end up
     //    with a "database says submitted, but there's no photo" record.
+    // The original File/Blob (camera capture or file picker) is uploaded
+    // as-is — no canvas re-encode — so contentType is read from the actual
+    // blob rather than assumed, since it's no longer guaranteed to be JPEG.
+    const contentType = photoBlob.type || 'image/jpeg';
     const photoPath = `submissions/${uid}/${SEMESTER_ID}/week${week}.jpg`;
     const photoStorageRef = ref(this.storage, photoPath);
-    await uploadBytes(photoStorageRef, photoBlob, { contentType: 'image/jpeg' });
+    await uploadBytes(photoStorageRef, photoBlob, { contentType });
     const photoURL = await getDownloadURL(photoStorageRef);
 
     const submittedAt = nowIso();
@@ -537,7 +541,7 @@ export class FirebaseBackend implements Backend {
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         const feedPhotoRef = ref(this.storage, `feedPhotos/${feedId}.jpg`);
-        await uploadBytes(feedPhotoRef, photoBlob, { contentType: 'image/jpeg' });
+        await uploadBytes(feedPhotoRef, photoBlob, { contentType });
         const feedPhotoURL = await getDownloadURL(feedPhotoRef);
         const completedAfter = (await this.getMySubmissions(uid)).length;
         await setDoc(doc(this.db, 'feedPosts', feedId), {

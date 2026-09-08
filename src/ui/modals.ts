@@ -1,5 +1,5 @@
 import { PROTOTYPE_MODE } from '../config';
-import { formatDateTime, getScheduledWindow, now, pad } from '../utils/date';
+import { formatDateTime, getScheduledWindow, pad } from '../utils/date';
 import { authoritativeSubmissionDate, isPunctualSubmission } from '../utils/punctual';
 import { getGrowthState } from '../utils/growth';
 import { isValidReflection } from '../utils/validation';
@@ -13,92 +13,48 @@ import { getWeekState } from './weekState';
 import { refreshAfterSubmission } from './refresh';
 
 // --- Photo capture (all transient, submission-modal-local state) ---
-// Only the native camera app (via <input type="file" capture="environment">)
-// is used to take the proof photo — a live getUserMedia() preview used to be
-// offered as a second option, but real iPhone Safari testing showed its
-// captured frame clipped the date/time watermark stamped in the bottom-right
-// corner (canvas dimensions from a live <video> element don't reliably match
-// what the phone's own camera app captures), while the native-camera-app
-// path stamps correctly every time. Keeping only one path is also simpler
-// for a student to use correctly.
+// The proof photo is taken via the native camera app or picked from the
+// device's file/gallery picker (both go through the same
+// <input type="file" capture="environment"> — capture="environment" only
+// nudges mobile browsers toward the camera; it never removes the gallery
+// option, and desktop browsers ignore it and just open the file picker).
+// The original File/Blob is uploaded as-is — no canvas re-encode — so a
+// high-resolution photo never has to be fully decoded into an in-memory
+// canvas on the student's device. The recorded submission time always comes
+// from the server (see utils/punctual.ts authoritativeSubmissionDate), never
+// from anything drawn on the photo itself.
 let capturedBlob: Blob | null = null;
-let capturedDataUrl = '';
+let capturedPreviewUrl = '';
+
+function revokeCapturedPreviewUrl() {
+  if (capturedPreviewUrl) URL.revokeObjectURL(capturedPreviewUrl);
+  capturedPreviewUrl = '';
+}
 
 function resetCameraUI() {
+  revokeCapturedPreviewUrl();
+  els.capturedPreview.src = '';
   els.capturedPreview.classList.add('hidden');
   els.cameraPlaceholder.classList.remove('hidden');
   els.cameraRetakeBtn.classList.add('hidden');
   els.prototypePhotoBtn.classList.toggle('hidden', !PROTOTYPE_MODE);
 }
 
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
-  else ctx.rect(x, y, w, h);
-}
-
-function addTimestamp(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
-  const stamp = formatDateTime(now());
-  const fontSize = Math.max(18, Math.round(canvas.width * 0.025));
-  ctx.font = `700 ${fontSize}px sans-serif`;
-  const padX = Math.round(fontSize * 0.65);
-  const padY = Math.round(fontSize * 0.52);
-  const metrics = ctx.measureText(stamp);
-  const boxW = metrics.width + padX * 2;
-  const boxH = fontSize + padY * 2;
-  const x = Math.max(8, canvas.width - boxW - 18);
-  const y = Math.max(8, canvas.height - boxH - 18);
-  ctx.fillStyle = 'rgba(0,0,0,.66)';
-  roundRect(ctx, x, y, boxW, boxH, Math.round(fontSize * 0.4));
-  ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(stamp, x + padX, y + boxH / 2 + 1);
-}
-
-function showCapturedPreview() {
-  els.capturedPreview.src = capturedDataUrl;
+function showCapturedPreview(blob: Blob) {
+  revokeCapturedPreviewUrl();
+  capturedBlob = blob;
+  capturedPreviewUrl = URL.createObjectURL(blob);
+  els.capturedPreview.src = capturedPreviewUrl;
   els.capturedPreview.classList.remove('hidden');
   els.cameraPlaceholder.classList.add('hidden');
   els.cameraRetakeBtn.classList.remove('hidden');
-  toast('날짜·시간이 포함된 인증샷이 준비되었습니다.', 'success');
+  toast('인증샷이 준비되었습니다.', 'success');
 }
 
-async function stampImageSource(src: string) {
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const im = new Image();
-    im.onload = () => resolve(im);
-    im.onerror = reject;
-    im.src = src;
-  });
-  const maxW = 1280;
-  const scale = Math.min(1, maxW / img.naturalWidth);
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
-  canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  addTimestamp(ctx, canvas);
-  capturedBlob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.84));
-  capturedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
-  showCapturedPreview();
-}
-
-async function handleCameraFile(file: File | null | undefined) {
+function handleCameraFile(file: File | null | undefined) {
   if (!file) return;
   if (!file.type.startsWith('image/')) return toast('이미지 파일만 사용할 수 있습니다.', 'error');
-  const reader = new FileReader();
-  const src = await new Promise<string>((resolve, reject) => {
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-  try {
-    await stampImageSource(src);
-  } catch (e) {
-    console.error(e);
-    toast('사진을 처리하지 못했습니다. 다시 촬영해주세요.', 'error');
-  }
+  showCapturedPreview(file);
 }
 
 async function makePrototypePhoto() {
@@ -128,10 +84,8 @@ async function makePrototypePhoto() {
   ctx.fillStyle = '#dfe7fa';
   ctx.font = '700 32px sans-serif';
   ctx.fillText('PROTOTYPE CAMERA TEST', 205, 625);
-  addTimestamp(ctx, canvas);
-  capturedBlob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.84));
-  capturedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
-  showCapturedPreview();
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.84));
+  if (blob) showCapturedPreview(blob);
 }
 
 // --- Submission modal open/submit ---
@@ -144,7 +98,6 @@ export function openSubmission(week: number) {
 
   state.activeSubmissionWeek = week;
   capturedBlob = null;
-  capturedDataUrl = '';
   els.submitWeekLabel.textContent = `WEEK ${week}`;
   els.submitGoalText.textContent = state.profile?.goalText ?? '';
   els.reflectionText.value = '';
@@ -222,7 +175,7 @@ export function openDetail(sub: Submission) {
   // (never the client-supplied submittedAt string, which a device's local
   // clock could misreport) — see utils/punctual.ts authoritativeSubmissionDate.
   const d = authoritativeSubmissionDate(sub) ?? new Date(sub.submittedAt || Date.now());
-  els.detailMeta.textContent = `제출 ${formatDateTime(d)} · ${sub.status === 'test' ? '프로토타입 테스트 제출' : '주차 내 제출'}`;
+  els.detailMeta.textContent = `인증 시각 ${formatDateTime(d)} · ${sub.status === 'test' ? '프로토타입 테스트 제출' : '주차 내 제출'}`;
   els.detailModal.classList.remove('hidden');
 }
 
@@ -259,13 +212,12 @@ export function initModalEvents() {
   els.cameraFileBtn.onclick = () => els.cameraFileInput.click();
   els.cameraFileInput.onchange = () => {
     const f = els.cameraFileInput.files?.[0];
-    void handleCameraFile(f);
+    handleCameraFile(f);
     els.cameraFileInput.value = '';
   };
   els.prototypePhotoBtn.onclick = makePrototypePhoto;
   els.cameraRetakeBtn.onclick = () => {
     capturedBlob = null;
-    capturedDataUrl = '';
     resetCameraUI();
   };
   els.reflectionText.oninput = () => {

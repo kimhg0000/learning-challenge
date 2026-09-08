@@ -33,7 +33,7 @@ export function goalHistoryHtml(history: GoalVersion[]): string {
 // instant (never the client-supplied submittedAt string, which a device's
 // local clock could misreport) — see utils/punctual.ts authoritativeSubmissionDate.
 function submittedTimeText(s: Submission): string {
-  return formatDateTime(authoritativeSubmissionDate(s) ?? new Date(s.submittedAt));
+  return `인증 시각 ${formatDateTime(authoritativeSubmissionDate(s) ?? new Date(s.submittedAt))}`;
 }
 
 let searchQuery = '';

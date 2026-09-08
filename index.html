@@ -265,12 +265,12 @@
       <div class="modal-head"><div><div class="eyebrow" id="submit-week-label">WEEK 1</div><h2>이번 주 챌린지 인증</h2></div><button class="close-btn" data-close="submission-modal" aria-label="닫기">✕</button></div>
       <div class="panel plain" style="padding:13px;margin-bottom:12px"><div class="small muted">이번 주 목표</div><div id="submit-goal-text" style="font-size:14px;font-weight:700;line-height:1.55;margin-top:5px"></div></div>
       <div class="field" style="margin-top:0"><label><span class="step-num">1</span> 인증샷 촬영</label>
-        <div class="camera-box" id="camera-box"><div class="camera-placeholder" id="camera-placeholder"><svg viewBox="0 0 24 24" class="ico-lg"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1-2h7l1 2h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9Z"/><circle cx="12" cy="13" r="3.5"/></svg><b>인증사진 촬영</b> 버튼을 눌러 촬영하세요.<br>촬영 시 날짜와 시간이 사진 오른쪽 아래에 자동으로 기록됩니다.</div><img id="captured-preview" class="hidden" alt="인증샷 미리보기"></div>
+        <div class="camera-box" id="camera-box"><div class="camera-placeholder" id="camera-placeholder"><svg viewBox="0 0 24 24" class="ico-lg"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1-2h7l1 2h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9Z"/><circle cx="12" cy="13" r="3.5"/></svg><b>인증사진 촬영</b> 버튼을 눌러 사진을 촬영하거나 선택하세요.</div><img id="captured-preview" class="hidden" alt="인증샷 미리보기"></div>
         <input id="camera-file-input" type="file" accept="image/*" capture="environment" class="hidden">
         <div class="camera-actions" style="grid-template-columns:1fr"><button id="camera-file-btn" class="btn btn-primary" type="button">인증사진 촬영</button></div>
         <button id="prototype-photo-btn" class="btn btn-secondary hidden" style="width:100%;margin-top:9px" type="button">🧪 테스트 사진 생성</button>
         <button id="camera-retake-btn" class="btn btn-secondary hidden" style="width:100%;margin-top:9px" type="button">다시 촬영</button>
-        <p class="helper" style="margin-top:8px">인증 시각은 사진을 제출한 시각을 기준으로 기록됩니다.</p>
+        <p class="helper" style="margin-top:8px">인증 시각은 사진을 제출한 서버 시각을 기준으로 기록됩니다.</p>
         <p class="helper">인증사진에는 학습 인증에 불필요한 타인의 얼굴이나 개인정보가 포함되지 않도록 주의해 주세요.</p>
       </div>
       <div id="prototype-punctual-box" class="prototype-banner hidden" style="margin-top:12px"><strong>🧪 정시 배지 테스트</strong><p>현재 날짜가 실제 운영기간 밖이어도 배지 UI를 확인할 수 있습니다.</p><label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12px"><input id="prototype-punctual-check" type="checkbox"> 이번 테스트 제출을 '정해진 시간에 실천'으로 가정</label></div>
