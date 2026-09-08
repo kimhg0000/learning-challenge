@@ -175,7 +175,7 @@ export function openDetail(sub: Submission) {
   // (never the client-supplied submittedAt string, which a device's local
   // clock could misreport) — see utils/punctual.ts authoritativeSubmissionDate.
   const d = authoritativeSubmissionDate(sub) ?? new Date(sub.submittedAt || Date.now());
-  els.detailMeta.textContent = `인증 시각 ${formatDateTime(d)} · ${sub.status === 'test' ? '프로토타입 테스트 제출' : '주차 내 제출'}`;
+  els.detailMeta.textContent = `${formatDateTime(d)} · ${sub.status === 'test' ? '프로토타입 테스트 제출' : '주차 내 제출'}`;
   els.detailModal.classList.remove('hidden');
 }
 

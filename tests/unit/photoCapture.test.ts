@@ -115,11 +115,12 @@ describe('detail modal: authentication time is server-sourced and clearly labele
     photoStoragePath: 'submissions/u1/sem/week1.jpg', clientPunctualClaim: false, status: 'submitted' as const,
   };
 
-  it('shows "인증 시각 <server time>" — never a bare "제출" label, and never the client submittedAt when serverCreatedAt is present', () => {
+  it('shows the bare server-confirmed date/time (no "인증 시각" label prefix), never the client submittedAt when serverCreatedAt is present', () => {
     const serverTime = new Date('2026-09-08T19:50:00+09:00');
     openDetail({ ...baseSub, submittedAt: '2099-01-01T00:00:00.000Z', serverCreatedAt: serverTime });
 
-    expect(els.detailMeta.textContent).toContain('인증 시각');
+    expect(els.detailMeta.textContent).not.toContain('인증 시각');
+    expect(els.detailMeta.textContent).toContain('2026');
     expect(els.detailMeta.textContent).not.toContain('2099');
   });
 
