@@ -54,7 +54,7 @@ export const els = {
   submissionModal: $('submission-modal'), submitWeekLabel: $('submit-week-label'), submitGoalText: $('submit-goal-text'),
   prototypePunctualBox: $('prototype-punctual-box'), prototypePunctualCheck: $<HTMLInputElement>('prototype-punctual-check'),
   cameraPlaceholder: $('camera-placeholder'),
-  capturedPreview: $<HTMLImageElement>('captured-preview'), cameraRetakeBtn: $('camera-retake-btn'),
+  capturedStatus: $('captured-status'), capturedStatusSize: $('captured-status-size'), cameraRetakeBtn: $('camera-retake-btn'),
   cameraFileInput: $<HTMLInputElement>('camera-file-input'), cameraFileBtn: $('camera-file-btn'),
   prototypePhotoBtn: $('prototype-photo-btn'), reflectionText: $<HTMLTextAreaElement>('reflection-text'),
   reflectionCount: $('reflection-count'), submitFinalBtn: $<HTMLButtonElement>('submit-final-btn'),

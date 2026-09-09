@@ -18,11 +18,11 @@ describe('submission modal: live camera removed, native-camera-app capture kept'
     expect(html).not.toContain('실시간 촬영');
   });
 
-  it('the native-camera-app capture path (file input + trigger button + preview) is intact', () => {
+  it('the native-camera-app capture path (file input + trigger button + lightweight status) is intact', () => {
     expect(html).toContain('id="camera-file-input"');
     expect(html).toMatch(/id="camera-file-input"[^>]*capture="environment"/);
     expect(html).toContain('id="camera-file-btn"');
-    expect(html).toContain('id="captured-preview"');
+    expect(html).toContain('id="captured-status"');
     expect(html).toContain('id="camera-retake-btn"');
   });
 });
@@ -32,11 +32,6 @@ describe('date/time watermark removed: no canvas stamping of the proof photo', (
     expect(modalsSrc).not.toMatch(/addTimestamp|roundRect|stampImageSource/);
     expect(modalsSrc).not.toContain('toDataURL');
     expect(modalsSrc).not.toContain('readAsDataURL');
-  });
-
-  it('the captured/selected photo is previewed via an object URL (the original file), not decoded into a canvas', () => {
-    expect(modalsSrc).toContain('URL.createObjectURL');
-    expect(modalsSrc).toContain('URL.revokeObjectURL');
   });
 
   it('the camera placeholder no longer claims a date/time is stamped onto the photo', () => {

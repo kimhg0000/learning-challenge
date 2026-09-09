@@ -1,11 +1,12 @@
 import { PROTOTYPE_MODE } from '../config';
+import { MAX_IMAGE_BYTES } from '../constants';
 import { formatDateTime, getScheduledWindow, pad } from '../utils/date';
 import { authoritativeSubmissionDate, isPunctualSubmission } from '../utils/punctual';
 import { getGrowthState } from '../utils/growth';
 import { isValidReflection } from '../utils/validation';
 import { safeText } from '../utils/text';
 import { formatGoalSchedule } from '../utils/goal';
-import { backend } from '../backend';
+import { backend, OutsideWindowError, SubmissionExistsError } from '../backend';
 import type { GoalVersion, Submission } from '../types';
 import { els, toast } from './dom';
 import { state } from './state';
@@ -23,29 +24,39 @@ import { refreshAfterSubmission } from './refresh';
 // canvas on the student's device. The recorded submission time always comes
 // from the server (see utils/punctual.ts authoritativeSubmissionDate), never
 // from anything drawn on the photo itself.
+//
+// Critically, the original File/Blob is also never handed to an <img> as a
+// createObjectURL src: a mobile browser fully decodes whatever an <img>
+// renders, and decoding a 20MB+ high-resolution camera photo into memory on
+// top of everything else the PWA already holds is what was crashing the
+// browser/PWA process for students on lower-memory phones (production
+// incident: "메모리 부족" / silent crash reports). Instead, once a photo is
+// selected we show a lightweight, decode-free status readout (checkmark +
+// file size) — see showCapturedStatus below.
 let capturedBlob: Blob | null = null;
-let capturedPreviewUrl = '';
 
-function revokeCapturedPreviewUrl() {
-  if (capturedPreviewUrl) URL.revokeObjectURL(capturedPreviewUrl);
-  capturedPreviewUrl = '';
+function formatMB(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
+// Every path that ends the current photo's usefulness (retake, modal close,
+// successful submit, opening a new week's modal) routes through here, which
+// also clears capturedBlob — the only path that must NOT call this is a
+// failed submit, so a student can retry with the same photo instead of
+// re-picking it.
 function resetCameraUI() {
-  revokeCapturedPreviewUrl();
-  els.capturedPreview.src = '';
-  els.capturedPreview.classList.add('hidden');
+  capturedBlob = null;
+  els.capturedStatus.classList.add('hidden');
+  els.capturedStatusSize.textContent = '';
   els.cameraPlaceholder.classList.remove('hidden');
   els.cameraRetakeBtn.classList.add('hidden');
   els.prototypePhotoBtn.classList.toggle('hidden', !PROTOTYPE_MODE);
 }
 
-function showCapturedPreview(blob: Blob) {
-  revokeCapturedPreviewUrl();
+function showCapturedStatus(blob: Blob) {
   capturedBlob = blob;
-  capturedPreviewUrl = URL.createObjectURL(blob);
-  els.capturedPreview.src = capturedPreviewUrl;
-  els.capturedPreview.classList.remove('hidden');
+  els.capturedStatusSize.textContent = `사진 용량: ${formatMB(blob.size)}`;
+  els.capturedStatus.classList.remove('hidden');
   els.cameraPlaceholder.classList.add('hidden');
   els.cameraRetakeBtn.classList.remove('hidden');
   toast('인증샷이 준비되었습니다.', 'success');
@@ -54,7 +65,10 @@ function showCapturedPreview(blob: Blob) {
 function handleCameraFile(file: File | null | undefined) {
   if (!file) return;
   if (!file.type.startsWith('image/')) return toast('이미지 파일만 사용할 수 있습니다.', 'error');
-  showCapturedPreview(file);
+  if (file.size > MAX_IMAGE_BYTES) {
+    return toast('사진 용량이 너무 큽니다. 20MB 이하의 사진을 선택해주세요. 사진을 캡처(스크린샷)한 뒤 다시 선택하면 용량을 줄일 수 있습니다.', 'error');
+  }
+  showCapturedStatus(file);
 }
 
 async function makePrototypePhoto() {
@@ -85,7 +99,7 @@ async function makePrototypePhoto() {
   ctx.font = '700 32px sans-serif';
   ctx.fillText('PROTOTYPE CAMERA TEST', 205, 625);
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.84));
-  if (blob) showCapturedPreview(blob);
+  if (blob) showCapturedStatus(blob);
 }
 
 // --- Submission modal open/submit ---
@@ -97,7 +111,6 @@ export function openSubmission(week: number) {
   if (!PROTOTYPE_MODE && st.status === 'future') return toast('아직 인증 기간이 시작되지 않았습니다.', 'error');
 
   state.activeSubmissionWeek = week;
-  capturedBlob = null;
   els.submitWeekLabel.textContent = `WEEK ${week}`;
   els.submitGoalText.textContent = state.profile?.goalText ?? '';
   els.reflectionText.value = '';
@@ -147,8 +160,16 @@ async function submitWeek() {
     }
   } catch (err) {
     console.error(err);
-    const message = err instanceof Error ? err.message : '제출 중 오류가 발생했습니다.';
-    toast(`${message} 네트워크 상태를 확인하고 다시 시도해주세요.`, 'error');
+    // SubmissionExistsError/OutsideWindowError already carry a clean,
+    // user-facing Korean message. Anything else (network failure, a raw
+    // Firebase Storage/Firestore error, ...) gets a generic message instead
+    // of leaking internal error text to the student — capturedBlob is left
+    // untouched (no resetCameraUI() call here) so the same photo can be
+    // retried without re-picking it.
+    const message = err instanceof SubmissionExistsError || err instanceof OutsideWindowError
+      ? err.message
+      : '사진 업로드에 실패했습니다. 네트워크 연결을 확인한 뒤 다시 시도해주세요.';
+    toast(message, 'error');
   } finally {
     els.submitFinalBtn.disabled = false;
     els.submitFinalBtn.textContent = '인증 제출하고 주차 완료';
@@ -216,10 +237,7 @@ export function initModalEvents() {
     els.cameraFileInput.value = '';
   };
   els.prototypePhotoBtn.onclick = makePrototypePhoto;
-  els.cameraRetakeBtn.onclick = () => {
-    capturedBlob = null;
-    resetCameraUI();
-  };
+  els.cameraRetakeBtn.onclick = () => resetCameraUI();
   els.reflectionText.oninput = () => {
     els.reflectionCount.textContent = String(els.reflectionText.value.length);
   };

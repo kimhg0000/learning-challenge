@@ -37,6 +37,13 @@ export const WEEKDAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 export const DURATION_OPTIONS = [30, 45, 60, 75, 90, 105, 120];
 export const XP_PER_COMPLETION = 100;
 
+// Client-side proof-photo size guard, mirrored server-side by storage.rules'
+// isReasonableImage() (which the client cannot import — keep the two literal
+// values in lockstep by hand). Rejected client-side BEFORE a large photo is
+// ever held onto as capturedBlob or handed to uploadBytes, so an oversized
+// photo never even gets a chance to pressure device memory.
+export const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+
 export interface GrowthStageDef {
   stage: number;
   minCompleted: number;
