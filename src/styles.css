@@ -302,8 +302,11 @@ h3{font-size:15px;font-weight:800}
 .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
 .close-btn{border:0;background:var(--surface-2);color:var(--text);width:32px;height:32px;border-radius:10px;font-size:13px}
 .camera-box{position:relative;border-radius:var(--radius-md);overflow:hidden;background:var(--surface-2);aspect-ratio:3/4;border:1px solid var(--border);display:flex;align-items:center;justify-content:center}
-.camera-box img{width:100%;height:100%;object-fit:cover;display:block}
 .camera-placeholder{padding:24px;text-align:center;color:var(--text-2);font-size:13px;line-height:1.65}
+.captured-status{padding:24px;text-align:center}
+.captured-status-icon{width:52px;height:52px;line-height:52px;margin:0 auto 12px;border-radius:99px;background:var(--success-soft);color:var(--success);font-size:24px;font-weight:700}
+.captured-status-text{color:var(--text);font-size:14px;font-weight:700}
+.captured-status-size{margin-top:6px;color:var(--text-2);font-size:12px}
 .camera-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px}
 .detail-photo{width:100%;border-radius:var(--radius-md);display:block;margin:12px 0;max-height:58dvh;object-fit:contain;background:var(--surface-2)}
 .detail-reflection{white-space:pre-wrap;font-size:13.5px;line-height:1.7;color:var(--text);background:var(--surface-2);padding:14px;border-radius:var(--radius-sm)}

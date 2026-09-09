@@ -38,7 +38,10 @@ service firebase.storage {
     }
 
     function isReasonableImage() {
-      return request.resource.size < 8 * 1024 * 1024
+      // Kept in lockstep by hand with MAX_IMAGE_BYTES in src/constants.ts —
+      // rules cannot import that file. 8MB was too low for a modern phone's
+      // default camera resolution; 20MB covers that with headroom.
+      return request.resource.size <= 20 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
     }
 
