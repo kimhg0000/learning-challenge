@@ -80,7 +80,8 @@ export interface Backend {
   getMySubmissions(uid: string): Promise<Submission[]>;
   submitWeek(uid: string, profile: UserProfile, input: SubmitWeekInput): Promise<Submission>;
 
-  listFeed(weekFilter: number): Promise<FeedPost[]>;
+  /** maxResults caps how many posts are fetched (e.g. the home screen's "recent 3" widget) — omit for the Feed tab's normal page size. */
+  listFeed(weekFilter: number, maxResults?: number): Promise<FeedPost[]>;
 
   /** Defaults to the current semester (constants.ts SEMESTER_ID). A past semesterId can be passed once a semester-switcher UI exists — see the redesign backlog. */
   adminListStudents(semesterId?: string): Promise<UserProfile[]>;

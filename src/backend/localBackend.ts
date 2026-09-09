@@ -279,7 +279,7 @@ export class LocalBackend implements Backend {
     return { uid: targetUid, name, studentId, deletedWeeks };
   }
 
-  async listFeed(weekFilter: number): Promise<FeedPost[]> {
+  async listFeed(weekFilter: number, maxResults?: number): Promise<FeedPost[]> {
     const mine = await this.getMySubmissions(DEMO_STUDENT_UID);
     const myProfile = (await loadState(DEMO_STUDENT_UID)).profile;
     const mineAsFeed: FeedPost[] = mine.map((s) => ({
@@ -298,9 +298,10 @@ export class LocalBackend implements Backend {
       { id: 'sample-1', anonName: '도전자 314', semesterId: SEMESTER_ID, week: 2, reflection: '이번 주에는 계획한 시간만큼 집중해서 읽었다. 다음 주에는 시작 10분 전에 자리를 잡아 흐름을 더 안정적으로 만들고 싶다.', photoURL: SAMPLE_PHOTO, characterType: 'fox', characterStage: 2, punctualClaim: true, createdAt: new Date('2026-09-16T19:20:00') },
       { id: 'sample-2', anonName: '도전자 628', semesterId: SEMESTER_ID, week: 1, reflection: '첫 주라 긴장했지만 계획한 행동을 끝냈다. 다음 주에는 기록까지 더 꼼꼼하게 남겨보겠다.', photoURL: SAMPLE_PHOTO, characterType: 'panda', characterStage: 1, punctualClaim: false, createdAt: new Date('2026-09-10T15:00:00') },
     ];
-    return [...mineAsFeed, ...sample]
+    const combined = [...mineAsFeed, ...sample]
       .filter((f) => !weekFilter || f.week === weekFilter)
       .sort((a, b) => new Date(b.createdAt as Date).getTime() - new Date(a.createdAt as Date).getTime());
+    return maxResults ? combined.slice(0, maxResults) : combined;
   }
 
   async submitWeek(uid: string, profile: UserProfile, input: SubmitWeekInput): Promise<Submission> {

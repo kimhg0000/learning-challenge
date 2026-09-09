@@ -26,4 +26,19 @@ describe('imgWithFallback', () => {
     const html = imgWithFallback(undefined, '인증샷', 'thumb');
     expect(html).toContain('src=""');
   });
+
+  // Feed/admin screens can render anywhere from a handful up to hundreds of
+  // these tags on one page (see storage/feed-scale hotfix) — every one of
+  // them must defer its own network fetch/decode until it is actually
+  // scrolled near the viewport.
+  it('carries loading="lazy" and decoding="async" so offscreen images are never fetched/decoded immediately', () => {
+    const html = imgWithFallback('https://example.com/photo.jpg', '인증샷', 'feed-img');
+    expect(html).toContain('loading="lazy"');
+    expect(html).toContain('decoding="async"');
+  });
+
+  it('carries fetchpriority="low" so these never compete with the current screen\'s primary content', () => {
+    const html = imgWithFallback('https://example.com/photo.jpg', '인증샷', 'feed-img');
+    expect(html).toContain('fetchpriority="low"');
+  });
 });
