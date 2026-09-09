@@ -36,7 +36,6 @@ import { getFunctions, httpsCallable, connectFunctionsEmulator, type Functions }
 import { firebaseConfig } from '../config';
 import { PRIVACY_POLICY_VERSION } from '../config/privacy';
 import { CHARACTER_TYPES, SEMESTER_ID, TOTAL_WEEKS } from '../constants';
-import { getGrowthState } from '../utils/growth';
 import { getScheduledWindow, isWithinSubmissionWindow } from '../utils/date';
 import { makeAnonName } from '../utils/text';
 import { goalSettingsChanged } from '../utils/goal';
@@ -62,12 +61,28 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-/** One-way SHA-256 hex digest — used to derive a deterministic feedPosts id from a submission id without ever exposing the uid it's built from (see submitWeek() step 3). */
-async function sha256Hex(input: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+/**
+ * Calls the publishFeedPost Cloud Function (via the injected delegate) with
+ * up to `attempts` tries, and NEVER throws. A permanently failing feed
+ * publish must never surface as a submission failure to the student — the
+ * private submission (see submitWeek() step 2) already committed — or crash
+ * the app; it only leaves a console warning behind, with no feed post
+ * created. Exported as a standalone function (not a private method) so this
+ * retry/never-throw behavior can be unit-tested with a fake delegate,
+ * independent of the real Firebase Functions SDK.
+ */
+export async function publishFeedWithRetry(callPublishFeedPost: (week: number) => Promise<unknown>, week: number, attempts = 3): Promise<void> {
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      await callPublishFeedPost(week);
+      return;
+    } catch (err) {
+      lastError = err;
+      if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
+    }
+  }
+  console.warn(`[feed] publishFeedPost failed after ${attempts} attempts (submission itself already succeeded, week ${week}):`, lastError);
 }
 
 export interface FirebaseBackendOptions {
@@ -446,11 +461,30 @@ export class FirebaseBackend implements Backend {
     return res.data;
   }
 
-  async listFeed(weekFilter: number): Promise<FeedPost[]> {
+  /**
+   * Test/advanced use only — not part of the `Backend` interface. Calls the
+   * publishFeedPost Cloud Function directly, once, with no retry, so
+   * integration tests can exercise the function's own auth/ownership/
+   * idempotency guarantees in isolation. submitWeek() never calls this
+   * directly; it goes through publishFeedWithRetry() instead, which wraps
+   * the same callable with the bounded retry that must never surface a
+   * failure back to the student.
+   */
+  async callPublishFeedPost(week: number): Promise<{ feedId: string; photoURL: string }> {
+    const callable = httpsCallable<{ week: number }, { feedId: string; photoURL: string }>(this.functions, 'publishFeedPost');
+    const res = await callable({ week });
+    return res.data;
+  }
+
+  // maxResults lets a caller ask for a small slice (e.g. the home screen's
+  // "recent 3" widget) without first fetching the same up-to-200-document
+  // page the full Feed tab needs — see ui/screens/feed.ts loadHomeRecentFeed().
+  async listFeed(weekFilter: number, maxResults?: number): Promise<FeedPost[]> {
     const base = collection(this.db, 'feedPosts');
+    const resultLimit = maxResults ?? (weekFilter ? 200 : 100);
     const q = weekFilter
-      ? query(base, where('semesterId', '==', SEMESTER_ID), where('week', '==', weekFilter), orderBy('createdAt', 'desc'), limit(200))
-      : query(base, where('semesterId', '==', SEMESTER_ID), orderBy('createdAt', 'desc'), limit(100));
+      ? query(base, where('semesterId', '==', SEMESTER_ID), where('week', '==', weekFilter), orderBy('createdAt', 'desc'), limit(resultLimit))
+      : query(base, where('semesterId', '==', SEMESTER_ID), orderBy('createdAt', 'desc'), limit(resultLimit));
     const qs = await getDocs(q);
     return qs.docs.map((d) => ({ id: d.id, ...d.data() }) as FeedPost);
   }
@@ -517,54 +551,23 @@ export class FirebaseBackend implements Backend {
       tx.set(subRef, submissionData);
     });
 
-    // 3) Anonymous feed copy. This CANNOT be combined into the same
-    //    transaction as the private submission above: feedPosts' create rule
-    //    requires exists(submissions/{subId}) (see firestore.rules) so every
-    //    anonymous post is tied to a real, already-validated submission
-    //    without ever storing a uid — and inside a security rule,
-    //    exists()/get() always evaluate against the pre-transaction/batch
-    //    snapshot, even for another write in the SAME transaction. So the
-    //    submission must actually commit first; the feed write is
-    //    necessarily a second, later request, which is what leaves a real
-    //    (if narrow) window for a private-submission-without-feed-post
-    //    mismatch if that second request fails.
-    //
-    //    Two things reduce that window as far as it can go without weakening
-    //    the rule above: the feedId is deterministic (a one-way hash of
-    //    subId, never the raw uid — see storage.rules) rather than random,
-    //    so a retry is always idempotent and can never create a duplicate
-    //    feed post; and the whole step is retried a few times before it is
-    //    allowed to fail, since the private submission (already committed)
-    //    must never be rolled back for a feed-side failure.
-    const feedId = await sha256Hex(subId);
-    let feedError: unknown = null;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        const feedPhotoRef = ref(this.storage, `feedPhotos/${feedId}.jpg`);
-        await uploadBytes(feedPhotoRef, photoBlob, { contentType });
-        const feedPhotoURL = await getDownloadURL(feedPhotoRef);
-        const completedAfter = (await this.getMySubmissions(uid)).length;
-        await setDoc(doc(this.db, 'feedPosts', feedId), {
-          anonName: profile.anonName,
-          semesterId: SEMESTER_ID,
-          week,
-          reflection: reflection.trim(),
-          photoURL: feedPhotoURL,
-          characterType: profile.characterType,
-          characterStage: getGrowthState(completedAfter).stage,
-          punctualClaim: clientPunctualClaim,
-          createdAt: serverTimestamp(),
-        });
-        feedError = null;
-        break;
-      } catch (err) {
-        feedError = err;
-        if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
-      }
-    }
-    if (feedError) {
-      console.warn(`[feed] public feed copy failed after 3 attempts (submission itself already succeeded, week ${week}):`, feedError);
-    }
+    // 3) Anonymous feed copy — published via the publishFeedPost Cloud
+    //    Function, NOT a second client upload. The student's device already
+    //    sent this photo's bytes once, in step 1; the function performs a
+    //    server-side Storage copy from the private object to
+    //    feedPhotos/{feedId}.jpg (feedId = sha256(subId), unchanged) instead
+    //    of the device uploading the same Blob again. This cannot be
+    //    combined into the same transaction as the private submission
+    //    above — the function's own existence check on submissions/{subId}
+    //    must see it already committed — so the feed publish is necessarily
+    //    a second, later request, which is what leaves a real (if narrow)
+    //    window for a private-submission-without-feed-post mismatch if that
+    //    second request fails. publishFeedWithRetry() never throws and never
+    //    rolls back the already-committed private submission on failure —
+    //    it only logs a warning — and the function itself is idempotent
+    //    (deterministic feedId), so a retry can never create a duplicate.
+    const callPublishFeedPost = httpsCallable<{ week: number }, { feedId: string; photoURL: string }>(this.functions, 'publishFeedPost');
+    await publishFeedWithRetry((w) => callPublishFeedPost({ week: w }), week);
 
     return { id: subId, ...submissionData, serverCreatedAt: submitDate } as unknown as Submission;
   }

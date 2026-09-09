@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { setupIntegrationRules, createStudent, tinyJpegBlob } from './helpers';
+import { doc, updateDoc } from 'firebase/firestore';
+import { setupIntegrationRules, createStudent, withRulesDisabled, tinyJpegBlob } from './helpers';
 
 // Regression coverage for the 2026-09 staging bug report: the instructor
 // dashboard and Excel export showed 2 submissions for a week, but the
@@ -76,16 +77,19 @@ describe('deterministic feed id', () => {
 });
 
 describe('feed-step failure never blocks or corrupts the private submission', () => {
-  it('if every feed-post retry is rejected (anonName mismatch), the submission still succeeds and simply has no feed post', async () => {
+  it('if publishFeedPost permanently fails server-side (empty semesterId on the stored profile), the submission still succeeds and simply has no feed post', async () => {
+    // publishFeedPost (functions/src/index.ts) re-derives semesterId from the
+    // caller's OWN stored profile document, never a client-supplied value —
+    // clearing it directly in Firestore (bypassing rules, as only the Admin
+    // SDK legitimately could) forces the function to reject every one of the
+    // client's 3 retry attempts with a real, permanent server-side error,
+    // without touching anything the private submission write depends on
+    // (that write always uses the build's own SEMESTER_ID constant, never
+    // profile.semesterId).
     const { backend, uid, profile } = await createStudent('feed-retry-fail@student.example');
-    // Simulates a persistent feed-write failure: the rule requires
-    // get(users/{uid}).data.anonName == the feed doc's anonName, which this
-    // deliberately mismatched in-memory profile can never satisfy, so all 3
-    // retry attempts are guaranteed to fail — without ever touching the
-    // stored user doc or the (already-correct) submission write.
-    const brokenProfile = { ...profile, anonName: 'wrong-anon-name-that-will-never-match' };
+    await withRulesDisabled((db) => updateDoc(doc(db, 'users', uid), { semesterId: '' }));
 
-    const result = await backend.submitWeek(uid, brokenProfile, {
+    const result = await backend.submitWeek(uid, profile, {
       week: 1,
       photoBlob: tinyJpegBlob(),
       reflection: '피드가 실패해도 제출은 성공해야 합니다.',

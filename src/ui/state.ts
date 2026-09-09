@@ -8,6 +8,7 @@ export interface AppState {
   publicFeed: FeedPost[];
   homeRecentFeed: FeedPost[];
   selectedFeedWeek: number; // 0 = all
+  feedPage: number; // 1-based; reset to 1 whenever the week filter or instructor search changes
   prototypeWeek: number;
   editingGoal: boolean;
   authMode: 'login' | 'signup';
@@ -23,6 +24,7 @@ export const state: AppState = {
   publicFeed: [],
   homeRecentFeed: [],
   selectedFeedWeek: 0,
+  feedPage: 1,
   prototypeWeek: 1,
   editingGoal: false,
   authMode: 'login',
