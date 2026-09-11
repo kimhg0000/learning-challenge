@@ -108,6 +108,12 @@ async function seedStudentUser(uid: string, data: ReturnType<typeof studentUserD
 }
 
 describe('users/{uid}', () => {
+  it('an unverified allowlisted email has no instructor privilege', async () => {
+    await seedInstructorAllowlist();
+    const db = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email, email_verified: false }).firestore();
+    await assertFails(getDocs(collection(db, 'users')));
+    await assertFails(getDocs(collection(db, 'submissions')));
+  });
   it('a student can create their own profile with role:student', async () => {
     const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
     await assertSucceeds(setDoc(doc(db, 'users', STUDENT_A.uid), studentUserDoc()));
@@ -143,14 +149,14 @@ describe('users/{uid}', () => {
   it('an instructor (present in instructorAllowlist) CAN read any student profile and list all users', async () => {
     await seedInstructorAllowlist();
     await seedStudentUser(STUDENT_A.uid, studentUserDoc());
-    const db = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email }).firestore();
+    const db = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email, email_verified: true }).firestore();
     await assertSucceeds(getDoc(doc(db, 'users', STUDENT_A.uid)));
     await assertSucceeds(getDocs(collection(db, 'users')));
   });
 
   it('an allowlisted instructor CAN create their own profile document with role:instructor', async () => {
     await seedInstructorAllowlist();
-    const db = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email }).firestore();
+    const db = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email, email_verified: true }).firestore();
     await assertSucceeds(
       setDoc(doc(db, 'users', INSTRUCTOR.uid), {
         uid: INSTRUCTOR.uid, name: '교수자', studentId: '', email: INSTRUCTOR.email,
@@ -171,7 +177,7 @@ describe('users/{uid}', () => {
 });
 
 describe('submissions/{uid}_{semesterId}_w{week}', () => {
-  const goalSnapshot = { version: 1, goalText: '도서관에서 60분 읽고 정리한다', weekday: 3, startTime: '19:00', duration: 60 };
+  const goalSnapshot = { version: 1, goalText: studentUserDoc().goalText, weekday: 3, startTime: '19:00', duration: 60 };
 
   function submissionPayload(overrides: Partial<Record<string, unknown>> = {}) {
     return {
@@ -181,8 +187,8 @@ describe('submissions/{uid}_{semesterId}_w{week}', () => {
       goalVersion: 1,
       goalSnapshot,
       reflection: '이번 주에도 계획대로 실천했다.',
-      photoURL: 'https://example.com/photo.jpg',
-      photoStoragePath: `submissions/${STUDENT_A.uid}/${SEMESTER_ID}/week3.jpg`,
+      photoURL: `https://firebasestorage.googleapis.com/v0/b/demo/o/submissions%2F${STUDENT_A.uid}%2F${SEMESTER_ID}%2Fweek${overrides.week ?? 3}.jpg?alt=media`,
+      photoStoragePath: `submissions/${STUDENT_A.uid}/${SEMESTER_ID}/week${overrides.week ?? 3}.jpg`,
       submittedAt: new Date().toISOString(),
       serverCreatedAt: serverTimestamp(),
       clientPunctualClaim: false,
@@ -190,6 +196,17 @@ describe('submissions/{uid}_{semesterId}_w{week}', () => {
       ...overrides,
     };
   }
+
+  it.each([
+    { status: 'test', clientPunctualClaim: true }, { unexpected: 'smuggled' },
+    { goalVersion: 2 }, { goalSnapshot: { ...goalSnapshot, weekday: 4 } },
+    { photoURL: 'https://example.com/other.jpg' }, { photoStoragePath: 'submissions/another/other.jpg' },
+  ])('rejects forged production submission fields: %j', async forged => {
+    await seedStudentUser(STUDENT_A.uid, studentUserDoc());
+    const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
+    const week = currentWeek ?? 1;
+    await assertFails(setDoc(doc(db, 'submissions', subDocId(STUDENT_A.uid, week)), submissionPayload({ week, ...forged })));
+  });
 
   it('a student can create a submission for whichever week is really active right now (real serverTimestamp, real clock)', async () => {
     const db = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
@@ -203,8 +220,9 @@ describe('submissions/{uid}_{semesterId}_w{week}', () => {
       );
       return;
     }
+    await seedStudentUser(STUDENT_A.uid, studentUserDoc());
     await assertSucceeds(
-      setDoc(doc(db, 'submissions', subDocId(STUDENT_A.uid, currentWeek)), { ...submissionPayload(), week: currentWeek }),
+      setDoc(doc(db, 'submissions', subDocId(STUDENT_A.uid, currentWeek)), submissionPayload({ week: currentWeek })),
     );
   });
 
@@ -304,7 +322,7 @@ describe('submissions/{uid}_{semesterId}_w{week}', () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'submissions', subDocId(STUDENT_A.uid, 3)), submissionPayload());
     });
-    const db = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email }).firestore();
+    const db = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email, email_verified: true }).firestore();
     await assertSucceeds(getDoc(doc(db, 'submissions', subDocId(STUDENT_A.uid, 3))));
     await assertSucceeds(getDocs(collection(db, 'submissions')));
   });
@@ -411,7 +429,7 @@ describe('instructorAllowlist/{email}', () => {
   });
 
   it('nobody can write to instructorAllowlist from a client (console-only, by design)', async () => {
-    const db = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email }).firestore();
+    const db = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email, email_verified: true }).firestore();
     await assertFails(setDoc(doc(db, 'instructorAllowlist', INSTRUCTOR.email), { note: 'self-added' }));
   });
 });
@@ -478,7 +496,7 @@ describe('users/{uid}/profileHistory/{entryId}', () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(collection(ctx.firestore(), 'users', STUDENT_A.uid, 'profileHistory')), { ...historyEntry, changedAt: SEED_TIMESTAMP });
     });
-    const instructorDb = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email }).firestore();
+    const instructorDb = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email, email_verified: true }).firestore();
     await assertSucceeds(getDocs(collection(instructorDb, 'users', STUDENT_A.uid, 'profileHistory')));
 
     const otherStudentDb = testEnv.authenticatedContext(STUDENT_B.uid, { email: STUDENT_B.email }).firestore();
@@ -556,13 +574,13 @@ describe('users/{uid}/privacyConsent/record', () => {
     const otherStudentDb = testEnv.authenticatedContext(STUDENT_B.uid, { email: STUDENT_B.email }).firestore();
     await assertFails(getDoc(doc(otherStudentDb, 'users', STUDENT_A.uid, 'privacyConsent', 'record')));
 
-    const instructorDb = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email }).firestore();
+    const instructorDb = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email, email_verified: true }).firestore();
     await assertSucceeds(getDoc(doc(instructorDb, 'users', STUDENT_A.uid, 'privacyConsent', 'record')));
   });
 
   it('an instructor cannot write a consent record on a student\'s behalf', async () => {
     await seedInstructorAllowlist();
-    const instructorDb = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email }).firestore();
+    const instructorDb = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email, email_verified: true }).firestore();
     await assertFails(setDoc(doc(instructorDb, 'users', STUDENT_A.uid, 'privacyConsent', 'record'), consentPayload()));
   });
 
@@ -582,7 +600,7 @@ describe('adminAuditLogs/{logId}', () => {
   };
 
   it('nobody can write to adminAuditLogs from a client (Cloud Function / Admin SDK only)', async () => {
-    const instructorDb = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email }).firestore();
+    const instructorDb = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email, email_verified: true }).firestore();
     await assertFails(setDoc(doc(collection(instructorDb, 'adminAuditLogs')), auditEntry));
     const studentDb = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();
     await assertFails(setDoc(doc(collection(studentDb, 'adminAuditLogs')), auditEntry));
@@ -593,7 +611,7 @@ describe('adminAuditLogs/{logId}', () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(collection(ctx.firestore(), 'adminAuditLogs')), auditEntry);
     });
-    const instructorDb = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email }).firestore();
+    const instructorDb = testEnv.authenticatedContext(INSTRUCTOR.uid, { email: INSTRUCTOR.email, email_verified: true }).firestore();
     await assertSucceeds(getDocs(collection(instructorDb, 'adminAuditLogs')));
 
     const studentDb = testEnv.authenticatedContext(STUDENT_A.uid, { email: STUDENT_A.email }).firestore();

@@ -1,6 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { getBytes, ref } from 'firebase/storage';
+import { getBytes, ref, getMetadata, deleteObject } from 'firebase/storage';
+import { createRequire } from 'node:module';
+const sharp = createRequire(new URL('../../functions/package.json', import.meta.url))('sharp');
 import { FirebaseBackend } from '../../src/backend/firebaseBackend';
 import { SEMESTER_ID } from '../../src/constants';
 import { setupIntegrationRules, createStudent, withRulesDisabled, withStorageRulesDisabled, sha256Hex, tinyJpegBlob } from './helpers';
@@ -62,7 +64,7 @@ describe('publishFeedPost — server-side copy, schema, and idempotency', () => 
     expect(feedSnap.exists()).toBe(true);
   });
 
-  it('copies the private photo bytes to feedPhotos/{feedId}.jpg via a server-side Storage copy (never re-uploaded by the client)', async () => {
+  it('preserves private bytes and produces a JPEG thumbnail at the compatible path', async () => {
     const { backend, uid, profile } = await createStudent('publish-storage-copy@student.example');
     const photo = tinyJpegBlob();
     await backend.submitWeek(uid, profile, { week: 1, photoBlob: photo, reflection: 'Storage 복사 검증용 제출입니다.' });
@@ -71,7 +73,12 @@ describe('publishFeedPost — server-side copy, schema, and idempotency', () => 
     const feedId = await sha256Hex(subId);
     const copiedBytes = await withStorageRulesDisabled((storage) => getBytes(ref(storage, `feedPhotos/${feedId}.jpg`)));
     const originalBytes = new Uint8Array(await photo.arrayBuffer());
-    expect(new Uint8Array(copiedBytes)).toEqual(originalBytes);
+    const privateBytes = await withStorageRulesDisabled(storage => getBytes(ref(storage, `submissions/${uid}/${SEMESTER_ID}/week1.jpg`)));
+    expect(new Uint8Array(privateBytes)).toEqual(originalBytes);
+    const meta = await sharp(Buffer.from(copiedBytes)).metadata();
+    expect(meta.format).toBe('jpeg'); expect(meta.width).toBeLessThanOrEqual(1200);
+    const stored = await withStorageRulesDisabled(storage => getMetadata(ref(storage, `feedPhotos/${feedId}.jpg`)));
+    expect(stored.contentType).toBe('image/jpeg');
   });
 
   it('the written feedPosts document contains no uid/name/studentId/email — exactly the existing anonymous schema', async () => {
@@ -104,5 +111,41 @@ describe('publishFeedPost — server-side copy, schema, and idempotency', () => 
     const feedId = await sha256Hex(`${uid}_${SEMESTER_ID}_w1`);
     const feedSnap = await withRulesDisabled((db) => getDoc(doc(db, 'feedPosts', feedId)));
     expect(feedSnap.exists()).toBe(true);
+  });
+});
+
+describe('publish concurrency and failure isolation', () => {
+  it('concurrent first publishes and retry converge on one immutable token/object', async () => {
+    const { backend, uid, profile } = await createStudent('publish-concurrent@student.example');
+    await backend.submitWeek(uid, profile, { week: 1, photoBlob: tinyJpegBlob(), reflection: '동시 호출 테스트 제출입니다.' });
+    const feedId = await sha256Hex(`${uid}_${SEMESTER_ID}_w1`);
+    // Disposable emulator fixture: remove the generated output, preserving the
+    // committed private submission, so calls race through actual creation.
+    const { deleteDoc } = await import('firebase/firestore');
+    await withRulesDisabled(db => deleteDoc(doc(db, 'feedPosts', feedId)));
+    await withStorageRulesDisabled(storage => deleteObject(ref(storage, `feedPhotos/${feedId}.jpg`)));
+    const results = await Promise.all(Array.from({ length: 5 }, () => backend.callPublishFeedPost(1)));
+    expect(new Set(results.map(r => r.photoURL)).size).toBe(1);
+    const before = await withStorageRulesDisabled(storage => getMetadata(ref(storage, `feedPhotos/${feedId}.jpg`)));
+    const response = await fetch(results[0].photoURL);
+    expect(response.ok).toBe(true); expect(response.headers.get('content-type')).toContain('image/jpeg');
+    await backend.callPublishFeedPost(1);
+    const after = await withStorageRulesDisabled(storage => getMetadata(ref(storage, `feedPhotos/${feedId}.jpg`)));
+    expect(after.generation).toBe(before.generation);
+    // Simulate Firestore commit failure after successful Storage write.
+    await withRulesDisabled(db => deleteDoc(doc(db, 'feedPosts', feedId)));
+    const retry = await backend.callPublishFeedPost(1);
+    expect(retry.photoURL).toBe(results[0].photoURL);
+    expect((await withStorageRulesDisabled(storage => getMetadata(ref(storage, `feedPhotos/${feedId}.jpg`)))).generation).toBe(before.generation);
+  });
+  it('corrupt input preserves the successful private submission and never publishes the original', async () => {
+    const { backend, uid, profile } = await createStudent('publish-corrupt@student.example');
+    const blob = new Blob([new Uint8Array([255,216,255,217])], {type:'image/jpeg'});
+    const sub = await backend.submitWeek(uid, profile, { week: 1, photoBlob: blob, reflection:'손상된 사진 실패 격리 테스트입니다.' });
+    expect(sub.status).toBe('submitted');
+    const feedId = await sha256Hex(sub.id);
+    expect((await withRulesDisabled(db => getDoc(doc(db, 'submissions', sub.id)))).exists()).toBe(true);
+    expect((await withRulesDisabled(db => getDoc(doc(db, 'feedPosts', feedId)))).exists()).toBe(false);
+    await expect(withStorageRulesDisabled(storage => getMetadata(ref(storage, `feedPhotos/${feedId}.jpg`)))).rejects.toThrow();
   });
 });

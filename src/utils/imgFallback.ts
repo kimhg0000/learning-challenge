@@ -18,6 +18,7 @@ import { safeText } from './text';
  * a plain <img> the UI sets .src on directly), so that flow is unaffected.
  */
 export function imgWithFallback(src: string | undefined, alt: string, className: string): string {
+  if (!src) return `<div class="${className} img-fallback">이미지를 불러올 수 없습니다</div>`;
   const safeSrc = safeText(src || '');
   const safeAlt = safeText(alt);
   const fallbackHtml = `<div class="${className} img-fallback">이미지를 불러올 수 없습니다</div>`.replace(/"/g, '&quot;');

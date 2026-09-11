@@ -11,6 +11,8 @@ import { state } from '../state';
 import { characterMarkupForStage } from '../character';
 import { getAdminData } from '../adminData';
 import { openStudentHistory } from './admin';
+import { sessionGuard } from '../session';
+import { feedPhotoURL } from '../../utils/feedPhoto';
 
 const STUDENT_FEED_PAGE_SIZE = 8;
 const INSTRUCTOR_FEED_PAGE_SIZE = 10;
@@ -35,27 +37,33 @@ export function renderFeedWeekFilter() {
   });
 }
 
-export async function loadPublicFeed() {
+export async function loadPublicFeed(isCurrent: () => boolean = sessionGuard()) {
   if (isInstructor()) {
-    if (!els.mainScreen.classList.contains('hidden')) await renderInstructorFeed();
+    if (!els.mainScreen.classList.contains('hidden')) await renderInstructorFeed(isCurrent);
     return;
   }
   try {
-    state.publicFeed = await backend.listFeed(state.selectedFeedWeek);
+    const feed = await backend.listFeed(state.selectedFeedWeek);
+    if (!isCurrent()) return;
+    state.publicFeed = feed;
   } catch (e) {
     console.warn(e);
+    if (!isCurrent()) return;
     state.publicFeed = [];
   }
   if (!els.mainScreen.classList.contains('hidden')) renderFeed();
 }
 
-export async function loadHomeRecentFeed() {
+export async function loadHomeRecentFeed(isCurrent: () => boolean = sessionGuard()) {
   try {
     // Fetches only the 3 posts the home widget actually shows, instead of
     // pulling the Feed tab's full page and slicing client-side.
-    state.homeRecentFeed = await backend.listFeed(0, HOME_RECENT_FEED_MAX);
+    const feed = await backend.listFeed(0, HOME_RECENT_FEED_MAX);
+    if (!isCurrent()) return;
+    state.homeRecentFeed = feed;
   } catch (e) {
     console.warn(e);
+    if (!isCurrent()) return;
     state.homeRecentFeed = [];
   }
 }
@@ -101,7 +109,7 @@ export function renderFeed() {
     items
       .map((f) => {
         const submitted = feedCreatedAtDate(f.createdAt);
-        return `<article class="feed-card">${imgWithFallback(f.photoURL, '익명 학습 인증', 'feed-img')}<div class="feed-body"><div class="feed-top"><div style="display:flex;align-items:center;gap:8px">${characterMarkupForStage(f.characterType || 'rabbit', f.characterStage || 1, 'small')}<div class="anon">${safeText(f.anonName || '익명 도전자')}</div></div><span class="tag accent">${Number(f.week)}주차</span></div><div class="feed-reflection">${safeText(f.reflection || '')}</div><div class="feed-date">${formatDateTime(submitted)}${f.punctualClaim ? ' <span class="punctual-chip">정시</span>' : ''}</div></div></article>`;
+        return `<article class="feed-card">${imgWithFallback(feedPhotoURL(f.photoURL), '익명 학습 인증', 'feed-img')}<div class="feed-body"><div class="feed-top"><div style="display:flex;align-items:center;gap:8px">${characterMarkupForStage(f.characterType || 'rabbit', f.characterStage || 1, 'small')}<div class="anon">${safeText(f.anonName || '익명 도전자')}</div></div><span class="tag accent">${Number(f.week)}주차</span></div><div class="feed-reflection">${safeText(f.reflection || '')}</div><div class="feed-date">${formatDateTime(submitted)}${f.punctualClaim ? ' <span class="punctual-chip">정시</span>' : ''}</div></div></article>`;
       })
       .join('') || `<div class="panel body-sm muted">${state.selectedFeedWeek ? state.selectedFeedWeek + '주차에 등록된 인증이 아직 없습니다.' : '아직 등록된 인증이 없습니다.'}</div>`;
 
@@ -115,13 +123,14 @@ export function renderFeed() {
 
 let instructorSearchQuery = '';
 
-async function renderInstructorFeed() {
+async function renderInstructorFeed(isCurrent: () => boolean = sessionGuard()) {
   renderFeedWeekFilter();
   els.feedSearchWrap.classList.remove('hidden');
   els.feedSearchInput.value = instructorSearchQuery;
   els.feedNoticeText.textContent = '교수자 화면에서는 학생의 제출 기록이 실명으로 표시됩니다. 학생 간 피드에서는 익명으로 제공됩니다.';
 
   const { students, allSubs } = await getAdminData();
+  if (!isCurrent()) return;
   const allItems = buildInstructorFeedItems(students, allSubs, { week: state.selectedFeedWeek, query: instructorSearchQuery });
 
   if (!allItems.length) {
@@ -139,12 +148,15 @@ async function renderInstructorFeed() {
   const { items, page, totalPages } = paginate(allItems, state.feedPage, INSTRUCTOR_FEED_PAGE_SIZE);
   state.feedPage = page;
 
+  const photoURLs = await backend.getFeedPhotoURLs(items.map((item) => item.submission.id)).catch(() => ({} as Record<string, string>));
+  if (!isCurrent()) return;
+
   els.feedList.innerHTML = items
     .map(({ uid, name, studentId, characterType, characterStage, submission: s }) => {
       const badge = isPunctualSubmission(s);
       // Server-confirmed instant, never the client-supplied submittedAt string.
       const submittedTime = authoritativeSubmissionDate(s) ?? new Date(s.submittedAt);
-      return `<article class="feed-card"><div class="feed-body" style="padding-bottom:0"><div class="feed-top"><div style="display:flex;align-items:center;gap:8px">${characterMarkupForStage(characterType, characterStage, 'small')}<div><div class="anon instructor-feed-name" data-history-uid="${safeText(uid)}">${safeText(name)}</div><div class="feed-student-id">${safeText(studentId)}</div></div></div><span class="tag accent">${Number(s.week)}주차</span></div></div>${imgWithFallback(s.photoURL, `${name} ${s.week}주차 인증샷`, 'feed-img')}<div class="feed-body"><div class="helper" style="margin:0 0 8px">제출 당시 목표 v${Number(s.goalVersion || 1)} · ${safeText(s.goalSnapshot?.goalText || '목표 기록 없음')}</div><div class="feed-reflection">${safeText(s.reflection || '(작성된 성찰이 없습니다)')}</div><div class="feed-date">${safeText(formatDateTime(submittedTime))}${badge ? ' <span class="punctual-chip">정시</span>' : ''}</div></div></article>`;
+      return `<article class="feed-card"><div class="feed-body" style="padding-bottom:0"><div class="feed-top"><div style="display:flex;align-items:center;gap:8px">${characterMarkupForStage(characterType, characterStage, 'small')}<div><div class="anon instructor-feed-name" data-history-uid="${safeText(uid)}">${safeText(name)}</div><div class="feed-student-id">${safeText(studentId)}</div></div></div><span class="tag accent">${Number(s.week)}주차</span></div></div>${imgWithFallback(photoURLs[s.id], `${name} ${s.week}주차 인증샷`, 'feed-img')}<div class="feed-body"><div class="helper" style="margin:0 0 8px">제출 당시 목표 v${Number(s.goalVersion || 1)} · ${safeText(s.goalSnapshot?.goalText || '목표 기록 없음')}</div><div class="feed-reflection">${safeText(s.reflection || '(작성된 성찰이 없습니다)')}</div><div class="feed-date">${safeText(formatDateTime(submittedTime))}${badge ? ' <span class="punctual-chip">정시</span>' : ''}</div></div></article>`;
     })
     .join('');
 

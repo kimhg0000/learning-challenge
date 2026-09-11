@@ -32,7 +32,7 @@ service firebase.storage {
     }
 
     function isInstructor() {
-      return isSignedIn() && firestore.exists(
+      return isSignedIn() && request.auth.token.email_verified == true && firestore.exists(
         /databases/(default)/documents/instructorAllowlist/$(request.auth.token.email.lower())
       );
     }
@@ -47,13 +47,14 @@ service firebase.storage {
 
     match /submissions/{uid}/{semesterId}/{fileName} {
       allow read: if isSignedIn() && (request.auth.uid == uid || isInstructor());
-      allow write: if isSignedIn() && request.auth.uid == uid && isReasonableImage();
+      allow write: if isSignedIn() && request.auth.uid == uid
+        && resource == null && request.resource != null && isReasonableImage();
       allow delete: if false;
     }
 
     match /feedPhotos/{fileName} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && isReasonableImage();
+      allow write: if false; // Server Admin SDK publishes thumbnails; clients never write.
       allow delete: if false;
     }
 

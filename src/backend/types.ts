@@ -82,6 +82,8 @@ export interface Backend {
 
   /** maxResults caps how many posts are fetched (e.g. the home screen's "recent 3" widget) — omit for the Feed tab's normal page size. */
   listFeed(weekFilter: number, maxResults?: number): Promise<FeedPost[]>;
+  /** Resolves only anonymous feed photos, keyed by private submission id. Never falls back to originals. */
+  getFeedPhotoURLs(submissionIds: string[]): Promise<Record<string, string>>;
 
   /** Defaults to the current semester (constants.ts SEMESTER_ID). A past semesterId can be passed once a semester-switcher UI exists — see the redesign backlog. */
   adminListStudents(semesterId?: string): Promise<UserProfile[]>;

@@ -3,7 +3,6 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
@@ -30,7 +29,7 @@ import {
   runTransaction,
   type Firestore,
 } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage';
+import { getStorage, ref, uploadBytes, getDownloadURL, getMetadata, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage';
 import { getFunctions, httpsCallable, connectFunctionsEmulator, type Functions } from 'firebase/functions';
 
 import { firebaseConfig } from '../config';
@@ -39,6 +38,7 @@ import { CHARACTER_TYPES, SEMESTER_ID, TOTAL_WEEKS } from '../constants';
 import { getScheduledWindow, isWithinSubmissionWindow } from '../utils/date';
 import { makeAnonName } from '../utils/text';
 import { goalSettingsChanged } from '../utils/goal';
+import { feedPhotoURL, submissionFeedId } from '../utils/feedPhoto';
 import { isValidGoalSettings, isValidName, isValidStudentId } from '../utils/validation';
 import type { FeedPost, GoalSettings, GoalVersion, ProfileHistoryEntry, Submission, UserProfile } from '../types';
 import type { Backend, AuthUser, DeleteStudentResult, OnboardingInput, PrivacyConsentRecord, PrivacyConsentSource, SubmitWeekInput } from './types';
@@ -162,11 +162,7 @@ export class FirebaseBackend implements Backend {
 
   async signInGoogle(): Promise<void> {
     const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(this.auth, provider);
-    } catch {
-      await signInWithRedirect(this.auth, provider);
-    }
+    await signInWithPopup(this.auth, provider);
   }
 
   async signInEmail(email: string, password: string): Promise<void> {
@@ -187,7 +183,7 @@ export class FirebaseBackend implements Backend {
   }
 
   async isInstructor(email: string | null): Promise<boolean> {
-    if (!email) return false;
+    if (!email || !this.auth.currentUser?.emailVerified) return false;
     const snap = await getDoc(doc(this.db, 'instructorAllowlist', email.toLowerCase()));
     return snap.exists();
   }
@@ -489,6 +485,15 @@ export class FirebaseBackend implements Backend {
     return qs.docs.map((d) => ({ id: d.id, ...d.data() }) as FeedPost);
   }
 
+  async getFeedPhotoURLs(submissionIds: string[]): Promise<Record<string, string>> {
+    const entries = await Promise.all([...new Set(submissionIds)].map(async (id) => {
+      const feedId = await submissionFeedId(id);
+      const snap = await getDoc(doc(this.db, 'feedPosts', feedId));
+      return [id, feedPhotoURL(snap.exists() ? snap.get('photoURL') : '')] as const;
+    }));
+    return Object.fromEntries(entries);
+  }
+
   async submitWeek(uid: string, profile: UserProfile, input: SubmitWeekInput): Promise<Submission> {
     const { week, photoBlob, reflection } = input;
     if (!isWithinSubmissionWindow(week)) throw new OutsideWindowError(week);
@@ -511,7 +516,32 @@ export class FirebaseBackend implements Backend {
     const contentType = photoBlob.type || 'image/jpeg';
     const photoPath = `submissions/${uid}/${SEMESTER_ID}/week${week}.jpg`;
     const photoStorageRef = ref(this.storage, photoPath);
-    await uploadBytes(photoStorageRef, photoBlob, { contentType });
+    // A failed Firestore write may leave an immutable upload behind. Reuse
+    // only the exact same bytes on retry; never overwrite a different photo.
+    // Hashing compressed bytes does not decode pixels or re-encode the image.
+    const digest = await crypto.subtle.digest('SHA-256', await photoBlob.arrayBuffer());
+    const sha256 = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+    const sameExistingPhoto = async () => {
+      try {
+        const metadata = await getMetadata(photoStorageRef);
+        if (metadata.customMetadata?.sha256 !== sha256) {
+          throw new Error('이미 업로드된 사진이 있습니다. 동일한 사진으로 다시 시도해주세요.');
+        }
+        return true;
+      } catch (error) {
+        if ((error as { code?: string }).code === 'storage/object-not-found') return false;
+        throw error;
+      }
+    };
+    if (!await sameExistingPhoto()) {
+      try {
+        await uploadBytes(photoStorageRef, photoBlob, { contentType, customMetadata: { sha256 } });
+      } catch (error) {
+        // Handles an upload acknowledgement lost in transit or a simultaneous
+        // create of the same bytes. Different/unreadable objects still fail.
+        if (!await sameExistingPhoto()) throw error;
+      }
+    }
     const photoURL = await getDownloadURL(photoStorageRef);
 
     const submittedAt = nowIso();

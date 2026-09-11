@@ -57,8 +57,8 @@ describe('handleAuthChange() retries afterLogin() once on failure — regression
   it('catches a failed afterLogin(), retries it once, and only then falls back to the generic error toast', () => {
     const handlerBody = handleAuthChangeBody();
 
-    const firstCallIndex = handlerBody.indexOf('await withTimeout(afterLogin()');
-    const retryCallIndex = handlerBody.indexOf('await withTimeout(afterLogin()', firstCallIndex + 1);
+    const firstCallIndex = handlerBody.indexOf('await runPostLogin()');
+    const retryCallIndex = handlerBody.indexOf('await runPostLogin()', firstCallIndex + 1);
     expect(firstCallIndex).toBeGreaterThan(-1);
     expect(retryCallIndex).toBeGreaterThan(firstCallIndex); // a SECOND call exists, after the first
 
@@ -68,7 +68,7 @@ describe('handleAuthChange() retries afterLogin() once on failure — regression
 
   it('both attempts are bounded by withTimeout() — a stalled connection can never leave the student on an infinite loading state', () => {
     const handlerBody = handleAuthChangeBody();
-    const timeoutCalls = handlerBody.split('withTimeout(afterLogin()').length - 1;
+    const timeoutCalls = handlerBody.split('runPostLogin()').length - 1;
     expect(timeoutCalls).toBe(2); // initial attempt + one retry, both bounded
   });
 

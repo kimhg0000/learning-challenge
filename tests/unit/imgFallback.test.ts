@@ -24,7 +24,7 @@ describe('imgWithFallback', () => {
 
   it('falls back to an empty src (not the string "undefined") when no photo URL is given', () => {
     const html = imgWithFallback(undefined, '인증샷', 'thumb');
-    expect(html).toContain('src=""');
+    expect(html).toContain('img-fallback'); expect(html).not.toContain('<img');
   });
 
   // Feed/admin screens can render anywhere from a handful up to hundreds of

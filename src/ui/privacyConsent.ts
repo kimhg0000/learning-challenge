@@ -13,6 +13,7 @@ import { safeText } from '../utils/text';
 import { els, showScreen, toast } from './dom';
 import { state } from './state';
 import { afterLogin } from './auth';
+import { invalidateSession, sessionGuard } from './session';
 
 function privacyPolicyHtml(): string {
   const purposes = PRIVACY_PURPOSES.map((p) => `<li>${safeText(p)}</li>`).join('');
@@ -60,16 +61,19 @@ export function initPrivacyConsentEvents() {
   };
   els.privacyConsentDetailBtn.onclick = () => openPrivacyPolicyModal();
   els.privacyPolicyLink.onclick = () => openPrivacyPolicyModal();
-  els.privacyConsentLogout.onclick = () => void backend.signOutUser();
+  els.privacyConsentLogout.onclick = () => { invalidateSession(); void backend.signOutUser(); };
 
   els.privacyConsentAgreeBtn.onclick = async () => {
     const uid = state.currentUser?.uid;
+    const isCurrent = sessionGuard();
     if (!uid || !els.privacyConsentCheckbox.checked) return;
     els.privacyConsentAgreeBtn.disabled = true;
     try {
       await backend.recordPrivacyConsent(uid, pendingConsentSource);
-      await afterLogin(); // continue routing (onboarding or main) now that consent is recorded
+      if (!isCurrent()) return;
+      await afterLogin(isCurrent); // continue routing only for this consent session
     } catch (err) {
+      if (!isCurrent()) return;
       console.error(err);
       toast('동의 처리 중 오류가 발생했습니다. 다시 시도해주세요.', 'error');
       els.privacyConsentAgreeBtn.disabled = false;

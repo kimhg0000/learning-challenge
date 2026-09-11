@@ -19,6 +19,7 @@ vi.mock('../../src/backend', () => ({
   SubmissionExistsError: class SubmissionExistsError extends Error {},
   OutsideWindowError: class OutsideWindowError extends Error {},
 }));
+vi.mock('../../src/ui/refresh', () => ({ refreshAfterSubmission: vi.fn().mockResolvedValue(undefined), renderAll: vi.fn() }));
 
 let els: typeof import('../../src/ui/dom').els;
 let initModalEvents: typeof import('../../src/ui/modals').initModalEvents;
