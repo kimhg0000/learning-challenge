@@ -1,3 +1,4 @@
+import { feedPhotoURL } from '../../utils/feedPhoto';
 import { TOTAL_WEEKS, WEEKDAY_NAMES } from '../../constants';
 import { formatDate, getScheduledWindow, getWeekBounds, pad } from '../../utils/date';
 import { getGrowthState } from '../../utils/growth';
@@ -72,7 +73,7 @@ export function renderHome() {
       .slice(0, 3)
       .map(
         (f) =>
-          `<div class="mini-feed-item">${imgWithFallback(f.photoURL, '익명 인증', '')}<div><strong>${safeText(f.anonName || '익명 도전자')} · ${Number(f.week)}주차 ${f.punctualClaim ? '⏰' : ''}</strong><p>${safeText(f.reflection || '')}</p></div></div>`,
+          `<div class="mini-feed-item">${imgWithFallback(feedPhotoURL(f.photoURL), '익명 인증', '')}<div><strong>${safeText(f.anonName || '익명 도전자')} · ${Number(f.week)}주차 ${f.punctualClaim ? '⏰' : ''}</strong><p>${safeText(f.reflection || '')}</p></div></div>`,
       )
       .join('') || '<div class="panel body-sm muted" style="padding:13px">아직 공개된 인증이 없습니다.</div>';
 }

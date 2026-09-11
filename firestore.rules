@@ -39,6 +39,7 @@ service cloud.firestore {
 
     function isInstructor() {
       return isSignedIn()
+        && request.auth.token.email_verified == true
         && exists(/databases/$(database)/documents/instructorAllowlist/$(callerEmail()));
     }
 
@@ -75,6 +76,18 @@ service cloud.firestore {
         && d.weekday is int && d.weekday >= 0 && d.weekday <= 6
         && d.startTime is string && d.startTime.matches('^[0-2][0-9]:[0-5][0-9]$')
         && d.duration is int && d.duration > 0 && d.duration <= 120;
+    }
+
+    function matchesCurrentGoal(d) {
+      let profile = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return profile.role == 'student'
+        && profile.semesterId == currentSemester()
+        && d.goalVersion == profile.currentGoalVersion
+        && d.goalSnapshot.version == d.goalVersion
+        && d.goalSnapshot.goalText == profile.goalText
+        && d.goalSnapshot.weekday == profile.weekday
+        && d.goalSnapshot.startTime == profile.startTime
+        && d.goalSnapshot.duration == profile.duration;
     }
 
     // Students must have a real 7-digit student id; instructor accounts have
@@ -243,15 +256,24 @@ service cloud.firestore {
 
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasOnly(['userId', 'semesterId', 'week', 'goalVersion', 'goalSnapshot', 'reflection', 'photoURL', 'photoStoragePath', 'submittedAt', 'serverCreatedAt', 'clientPunctualClaim', 'status'])
+        && request.resource.data.status == 'submitted'
+        && request.resource.data.clientPunctualClaim is bool
+        && request.resource.data.submittedAt is string
+        && request.resource.data.goalVersion is int
+        && request.resource.data.goalSnapshot.keys().hasOnly(['version', 'goalText', 'weekday', 'startTime', 'duration'])
         && request.resource.data.semesterId == currentSemester()
         && subId == request.auth.uid + '_' + currentSemester() + '_w' + string(request.resource.data.week)
         && !exists(/databases/$(database)/documents/submissions/$(subId))
         && isWithinWeekWindow(request.resource.data.week)
         && request.resource.data.reflection is string && request.resource.data.reflection.size() >= 10
         && request.resource.data.photoURL is string && request.resource.data.photoURL.size() > 0
+        && request.resource.data.photoURL.matches('^https?://[^/]+/v0/b/[^/]+/o/submissions%2F' + request.auth.uid + '%2F' + currentSemester() + '%2Fweek' + string(request.resource.data.week) + '[.]jpg[?].*')
+        && request.resource.data.photoStoragePath == 'submissions/' + request.auth.uid + '/' + currentSemester() + '/week' + string(request.resource.data.week) + '.jpg'
         && request.resource.data.serverCreatedAt == request.time
         && request.resource.data.goalSnapshot.version == request.resource.data.goalVersion
-        && isValidGoalFields(request.resource.data.goalSnapshot);
+        && isValidGoalFields(request.resource.data.goalSnapshot)
+        && matchesCurrentGoal(request.resource.data);
 
       allow update, delete: if false; // audit trail: a submission, once recorded, cannot be altered by anyone
     }

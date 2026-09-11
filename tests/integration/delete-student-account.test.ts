@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { ref, getMetadata } from 'firebase/storage';
 import { SEMESTER_ID } from '../../src/constants';
 import {
@@ -97,6 +97,8 @@ describe('deleteStudentAccount — full deletion, real instructor call', () => {
     await expect(withStorageRulesDisabled((storage) => getMetadata(ref(storage, publicPhotoPath)))).resolves.toBeTruthy();
 
     const { backend: instructorBackend } = await createInstructor(`delete-instructor-${Date.now()}@univ.example`);
+    await targetBackend.recordPrivacyConsent(targetUid, 'existing-user');
+    await withRulesDisabled(db => setDoc(doc(db, 'studentIdRegistry', `${SEMESTER_ID}_9988776`), {uid:targetUid,semesterId:SEMESTER_ID,studentId:'9988776'}));
     const result = await instructorBackend.adminDeleteStudent(targetUid);
     expect(result.uid).toBe(targetUid);
     expect(result.studentId).toBe('9990001');
@@ -116,6 +118,8 @@ describe('deleteStudentAccount — full deletion, real instructor call', () => {
     ).toBe(false);
     const goalVersions = await withRulesDisabled((db) => getDocs(collection(db, 'users', targetUid, 'goalVersions')));
     expect(goalVersions.empty).toBe(true);
+    expect((await withRulesDisabled(db => getDoc(doc(db, 'users', targetUid, 'privacyConsent', 'record')))).exists()).toBe(false);
+    expect((await withRulesDisabled(db => getDocs(query(collection(db, 'studentIdRegistry'), where('uid','==',targetUid))))).empty).toBe(true);
 
     // Storage photos are gone.
     await expect(withStorageRulesDisabled((storage) => getMetadata(ref(storage, privatePhotoPath)))).rejects.toThrow();
@@ -150,4 +154,15 @@ describe('deleteStudentAccount — full deletion, real instructor call', () => {
     expect(students.some((s) => s.uid === targetUid)).toBe(false);
     expect(students.some((s) => s.uid === bystanderUid)).toBe(true);
   });
+});
+
+it('retries deletion after Auth succeeded but the profile/Firestore cleanup remained', async () => {
+  const {uid} = await createStudent(`delete-retry-${Date.now()}@student.example`);
+  const response = await fetch('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:delete?key=demo-api-key', {
+    method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer owner'},body:JSON.stringify({localId:uid}),
+  });
+  expect(response.ok).toBe(true);
+  const {backend} = await createInstructor(`delete-retry-prof-${Date.now()}@univ.example`);
+  await expect(backend.adminDeleteStudent(uid)).resolves.toMatchObject({uid});
+  expect((await withRulesDisabled(db => getDoc(doc(db,'users',uid)))).exists()).toBe(false);
 });

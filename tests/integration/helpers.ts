@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { tinyPngBlob } from '../fixtures/tinyPng';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { FirebaseBackend } from '../../src/backend/firebaseBackend';
 import type { CharacterType, GoalSettings, UserProfile } from '../../src/types';
@@ -104,14 +105,14 @@ export async function createStudent(
 }
 
 export function tinyJpegBlob(): Blob {
-  return new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], { type: 'image/jpeg' });
+  return tinyPngBlob();
 }
 
 export function oversizedNonImageBlob(): Blob {
   // Fails storage.rules' isReasonableImage() on BOTH counts (not an image,
-  // and — once padded — over the 8MB cap), simulating a realistic
+  // and — once padded — over the 20MB cap), simulating a realistic
   // upload-rejected-by-the-server failure rather than a network error.
-  return new Blob([new Uint8Array(9 * 1024 * 1024)], { type: 'application/octet-stream' });
+  return new Blob([new Uint8Array(21 * 1024 * 1024)], { type: 'application/octet-stream' });
 }
 
 /**
@@ -177,8 +178,20 @@ export async function createInstructor(email: string): Promise<{ backend: Fireba
   await withRulesDisabled(async (firestore) => {
     await setDoc(doc(firestore, 'instructorAllowlist', email.toLowerCase()), { note: 'test' });
   });
+  await verifyEmulatorEmail(backend, uid, email);
   await backend.ensureInstructorProfile(uid, email, '교수자');
   return { backend, uid };
+}
+
+export async function verifyEmulatorEmail(backend: FirebaseBackend, uid: string, email: string) {
+  // Hard-coded loopback and demo project: this helper cannot alter real Auth.
+  const response = await fetch('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:update?key=demo-api-key', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer owner' },
+    body: JSON.stringify({ localId: uid, emailVerified: true }),
+  });
+  if (!response.ok) throw new Error(`Auth emulator verification failed: ${response.status}`);
+  await backend.signOutUser();
+  await backend.signInEmail(email, 'password123');
 }
 
 /** sha256Hex of a string, matching FirebaseBackend's private feedId derivation (feedId = sha256(subId)). */

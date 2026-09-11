@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { doc, updateDoc } from 'firebase/firestore';
 import { setupIntegrationRules, createStudent, withRulesDisabled, tinyJpegBlob } from './helpers';
+import { SEMESTER_ID } from '../../src/constants';
 
 // Regression coverage for the 2026-09 staging bug report: the instructor
 // dashboard and Excel export showed 2 submissions for a week, but the
@@ -77,29 +78,33 @@ describe('deterministic feed id', () => {
 });
 
 describe('feed-step failure never blocks or corrupts the private submission', () => {
-  it('if publishFeedPost permanently fails server-side (empty semesterId on the stored profile), the submission still succeeds and simply has no feed post', async () => {
+  it('an inconsistent stored profile is now rejected by submission integrity rules', async () => {
     // publishFeedPost (functions/src/index.ts) re-derives semesterId from the
     // caller's OWN stored profile document, never a client-supplied value —
-    // clearing it directly in Firestore (bypassing rules, as only the Admin
-    // SDK legitimately could) forces the function to reject every one of the
-    // client's 3 retry attempts with a real, permanent server-side error,
-    // without touching anything the private submission write depends on
-    // (that write always uses the build's own SEMESTER_ID constant, never
-    // profile.semesterId).
+    // A profile/semester mismatch now also prevents committing the private
+    // submission. Restoring that profile must allow retry with the original
+    // immutable upload, without uploading/replacing that photo again.
     const { backend, uid, profile } = await createStudent('feed-retry-fail@student.example');
     await withRulesDisabled((db) => updateDoc(doc(db, 'users', uid), { semesterId: '' }));
 
-    const result = await backend.submitWeek(uid, profile, {
+    await expect(backend.submitWeek(uid, profile, {
       week: 1,
       photoBlob: tinyJpegBlob(),
       reflection: '피드가 실패해도 제출은 성공해야 합니다.',
-    });
-    expect(result.week).toBe(1);
+    })).rejects.toThrow();
 
     const stored = await backend.getMySubmissions(uid);
-    expect(stored.filter((s) => s.week === 1)).toHaveLength(1);
+    expect(stored.filter((s) => s.week === 1)).toHaveLength(0);
 
     const feed = await backend.listFeed(1);
     expect(feed.filter((f) => f.reflection === '피드가 실패해도 제출은 성공해야 합니다.')).toHaveLength(0);
+    const {withStorageRulesDisabled}=await import('./helpers');
+    const {getMetadata,ref}=await import('firebase/storage');
+    const path=`submissions/${uid}/${SEMESTER_ID}/week1.jpg`;
+    const original=await withStorageRulesDisabled(storage=>getMetadata(ref(storage,path)));
+    await withRulesDisabled(db=>updateDoc(doc(db,'users',uid),{semesterId:SEMESTER_ID}));
+    await backend.submitWeek(uid,profile,{week:1,photoBlob:tinyJpegBlob(),reflection:'동일 원본을 덮어쓰지 않고 제출 저장만 재시도합니다.'});
+    const retried=await withStorageRulesDisabled(storage=>getMetadata(ref(storage,path)));
+    expect(retried.generation).toBe(original.generation);
   }, 15000);
 });

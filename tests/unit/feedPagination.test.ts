@@ -9,7 +9,7 @@ import type { FeedPost, Submission, UserProfile } from '../../src/types';
 document.body.innerHTML = readFileSync('index.html', 'utf8');
 
 vi.mock('../../src/backend', () => ({
-  backend: { submitWeek: vi.fn(), listFeed: vi.fn(), adminListStudents: vi.fn(), adminListAllSubmissions: vi.fn(), adminDeleteStudent: vi.fn() },
+  backend: { getFeedPhotoURLs: vi.fn(async (ids: string[]) => Object.fromEntries(ids.map(id => [id, `https://firebasestorage.googleapis.com/v0/b/demo/o/feedPhotos%2F${id}.jpg?alt=media`]))), adminGetGoalHistory: vi.fn(async()=>[]), adminGetProfileHistory: vi.fn(async()=>[]), adminGetPrivacyConsent: vi.fn(async()=>null), submitWeek: vi.fn(), listFeed: vi.fn(), adminListStudents: vi.fn(), adminListAllSubmissions: vi.fn(), adminDeleteStudent: vi.fn() },
 }));
 
 const mockGetAdminData = vi.fn();
@@ -36,7 +36,7 @@ beforeEach(async () => {
 function feedPost(i: number, overrides: Partial<FeedPost> = {}): FeedPost {
   return {
     id: `f${i}`, anonName: `도전자 ${i}`, semesterId: 'sem', week: 1,
-    reflection: `${i}번째 성찰입니다.`, photoURL: `https://example.com/${i}.jpg`,
+    reflection: `${i}번째 성찰입니다.`, photoURL: `https://firebasestorage.googleapis.com/v0/b/demo/o/feedPhotos%2F${i}.jpg?alt=media`,
     characterType: 'rabbit', characterStage: 1, punctualClaim: false,
     createdAt: new Date(2026, 8, 1 + i),
     ...overrides,
@@ -168,6 +168,25 @@ describe('instructor Feed pagination (renderInstructorFeed, via loadPublicFeed)'
     await loadPublicFeed();
     expect(els.feedList.innerHTML).toContain('loading="lazy"');
     expect(els.feedList.innerHTML).toContain('decoding="async"');
+    expect(els.feedList.innerHTML).toContain('fetchpriority="low"');
+    expect(els.feedList.innerHTML).toContain('feedPhotos');
+    expect(els.feedList.innerHTML).not.toContain('https://example.com/');
+  });
+
+  it('admin and history cards use thumbnails and no private original fallback', async () => {
+    const {loadAdminDashboard,openStudentHistory}=await import('../../src/ui/screens/admin');
+    els.adminWeekSelect.innerHTML='<option value="1">1</option>';els.adminWeekSelect.value='1';
+    await loadAdminDashboard();
+    expect(els.studentTable.innerHTML).toContain('feedPhotos');
+    expect(els.studentTable.innerHTML).not.toContain('https://example.com/');
+    await openStudentHistory('u0');
+    expect(els.historyWeeks.innerHTML).toContain('feedPhotos');
+    expect(els.historyWeeks.innerHTML).not.toContain('https://example.com/');
+    const evidenceButton = els.historyWeeks.querySelector<HTMLButtonElement>('button')!;
+    expect(evidenceButton.textContent).toBe('원본 증빙 보기');
+    evidenceButton.click();
+    expect(els.detailPhoto.src).toBe('https://example.com/u0-1.jpg');
+    expect(els.detailModal.classList.contains('hidden')).toBe(false);
   });
 
   it('shows a 1/3 pagination control for 30 items at page size 10', async () => {

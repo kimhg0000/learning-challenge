@@ -7,12 +7,14 @@ import { renderWeeks } from './screens/weeks';
 import { renderProfile } from './screens/profile';
 import { loadHomeRecentFeed, loadPublicFeed } from './screens/feed';
 import { loadAdminDashboard } from './screens/admin';
+import { sessionGuard } from './session';
 
 function isInstructor(): boolean {
   return state.profile?.role === 'instructor';
 }
 
-export async function renderAll() {
+export async function renderAll(isCurrent: () => boolean = sessionGuard()) {
+  if (!isCurrent()) return;
   const instructor = isInstructor();
   els.adminNavBtn.classList.toggle('hidden', !instructor);
   const homeNav = document.querySelector<HTMLElement>('[data-tab="home"]')!;
@@ -22,7 +24,8 @@ export async function renderAll() {
   const visibleNav = [...document.querySelectorAll('.nav-btn')].filter((b) => !b.classList.contains('hidden')).length;
   els.bottomNav.style.gridTemplateColumns = `repeat(${visibleNav},1fr)`;
 
-  await Promise.all([loadPublicFeed(), loadHomeRecentFeed()]);
+  await Promise.all([loadPublicFeed(isCurrent), loadHomeRecentFeed(isCurrent)]);
+  if (!isCurrent()) return;
   renderProfile();
   els.prototypeBanner.classList.toggle('hidden', instructor || !PROTOTYPE_MODE);
   if (!instructor) {
@@ -38,8 +41,11 @@ export async function onTabActivated(tab: string) {
 
 /** Reloads this student's own submissions + feed + all student-facing screens after a successful weekly submission. */
 export async function refreshAfterSubmission() {
+  const isCurrent = sessionGuard();
   const uid = state.currentUser?.uid;
   if (!uid) return;
-  state.submissions = await backend.getMySubmissions(uid);
-  await renderAll();
+  const submissions = await backend.getMySubmissions(uid);
+  if (!isCurrent()) return;
+  state.submissions = submissions;
+  await renderAll(isCurrent);
 }

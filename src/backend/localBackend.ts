@@ -304,6 +304,11 @@ export class LocalBackend implements Backend {
     return maxResults ? combined.slice(0, maxResults) : combined;
   }
 
+  async getFeedPhotoURLs(submissionIds: string[]): Promise<Record<string, string>> {
+    const subs = await this.adminListAllSubmissions();
+    return Object.fromEntries(subs.filter((s) => submissionIds.includes(s.id)).map((s) => [s.id, s.photoURL]));
+  }
+
   async submitWeek(uid: string, profile: UserProfile, input: SubmitWeekInput): Promise<Submission> {
     const state = await loadState(uid);
     if (state.submissions.some((s) => s.week === input.week)) {

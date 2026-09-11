@@ -16,6 +16,8 @@ import { renderHome } from './screens/home';
 import { renderWeeks } from './screens/weeks';
 import { showPrivacyConsentScreen } from './privacyConsent';
 import type { AuthUser } from '../backend/types';
+import { invalidateSession, sessionGuard } from './session';
+import { clearAdminData } from './adminData';
 
 function showOnboardingStep(n: 1 | 2) {
   els.profileStep.classList.toggle('hidden', n !== 1);
@@ -47,21 +49,27 @@ function prefillOnboarding() {
 // actually agrees, instead of this module polling/awaiting a promise that
 // would otherwise dangle forever if the student logs out from the consent
 // screen without ever agreeing.
-export async function afterLogin() {
+export async function afterLogin(isCurrent: () => boolean = sessionGuard()) {
   const user = state.currentUser;
-  if (!user) return;
+  if (!user || !isCurrent()) return;
 
   const instructor = await backend.isInstructor(user.email);
+  if (!isCurrent()) return;
   if (instructor) {
-    state.profile = await backend.ensureInstructorProfile(user.uid, user.email || '', user.displayName);
+    const profile = await backend.ensureInstructorProfile(user.uid, user.email || '', user.displayName);
+    if (!isCurrent()) return;
+    state.profile = profile;
     state.submissions = [];
     showScreen('main');
-    await renderAll();
+    await renderAll(isCurrent);
+    if (!isCurrent()) return;
     setTab('admin');
     return;
   }
 
-  state.profile = await backend.getProfile(user.uid);
+  const profile = await backend.getProfile(user.uid);
+  if (!isCurrent()) return;
+  state.profile = profile;
 
   // Gate BEFORE onboarding and BEFORE the main app for every student —
   // brand-new signups and pre-existing accounts created before this feature
@@ -70,6 +78,7 @@ export async function afterLogin() {
   // Never auto-agree just because the account already has other data (see
   // task requirement) — this check runs regardless of state.profile.
   const consent = await backend.getPrivacyConsent(user.uid);
+  if (!isCurrent()) return;
   if (needsPrivacyConsent(consent, PRIVACY_POLICY_VERSION)) {
     showPrivacyConsentScreen(state.profile ? 'existing-user' : 'signup');
     return; // ui/privacyConsent.ts calls afterLogin() again once the student actually agrees
@@ -83,9 +92,12 @@ export async function afterLogin() {
     return;
   }
 
-  state.submissions = await backend.getMySubmissions(user.uid);
+  const submissions = await backend.getMySubmissions(user.uid);
+  if (!isCurrent()) return;
+  state.submissions = submissions;
   showScreen('main');
-  await renderAll();
+  await renderAll(isCurrent);
+  if (!isCurrent()) return;
   setTab('home');
 }
 
@@ -127,12 +139,26 @@ function errorCode(err: unknown): string | undefined {
 // instead of racing a newer attempt's screen/button state.
 let authAttemptId = 0;
 
+async function runPostLogin() {
+  const validSession = sessionGuard();
+  let active = true;
+  try {
+    await withTimeout(afterLogin(() => active && validSession()), POST_LOGIN_TIMEOUT_MS);
+  } finally {
+    // Timeout does not cancel Firebase reads. Retire this particular run
+    // before retrying, even when the signed-in account has not changed.
+    active = false;
+  }
+}
+
 async function handleAuthChange(user: AuthUser | null) {
+  invalidateSession();
+  clearAdminData();
   if (user) {
     state.currentUser = user;
     const myAttempt = ++authAttemptId;
     try {
-      await withTimeout(afterLogin(), POST_LOGIN_TIMEOUT_MS);
+      await runPostLogin();
       if (myAttempt !== authAttemptId) return;
       resetAuthUi();
     } catch (err) {
@@ -150,7 +176,7 @@ async function handleAuthChange(user: AuthUser | null) {
       try {
         await new Promise((resolve) => setTimeout(resolve, 1200));
         if (myAttempt !== authAttemptId) return;
-        await withTimeout(afterLogin(), POST_LOGIN_TIMEOUT_MS);
+        await runPostLogin();
         if (myAttempt !== authAttemptId) return;
         resetAuthUi();
       } catch (retryErr) {
@@ -171,6 +197,9 @@ async function handleAuthChange(user: AuthUser | null) {
 }
 
 async function doLogout() {
+  invalidateSession();
+  authAttemptId++;
+  clearAdminData();
   els.studentTable.innerHTML = '';
   els.adminTotal.textContent = '0';
   els.adminSubmitted.textContent = '0';
@@ -289,18 +318,20 @@ export function initAuthEvents() {
     if (authFlowInFlight) return; // duplicate-click / duplicate-popup guard
     setAuthUiBusy(true);
     els.googleLoginBtnLabel.textContent = 'Google 로그인 중...';
+    const attempt = authAttemptId;
     try {
       await backend.signInGoogle();
-      // Popup success: same handoff to handleAuthChange() as above. A
-      // redirect fallback navigates the whole page away, so there is
-      // nothing left here to reset either way.
+      // Auth-state routing owns successful login completion.
     } catch (e) {
-      console.error(e);
       const code = errorCode(e);
+      console.warn('[auth] Google popup error', code ?? 'unknown');
+      if (attempt !== authAttemptId) return;
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
         // The student deliberately closed the popup, or double-clicked and
         // triggered a second popup request that Firebase itself cancelled —
         // neither is a real failure worth an error toast.
+      } else if (code === 'auth/popup-blocked') {
+        toast('팝업이 차단되었습니다. 브라우저의 팝업 허용 후 다시 시도해주세요.', 'error');
       } else if (code === 'auth/network-request-failed') {
         toast('네트워크 연결을 확인한 뒤 다시 시도해주세요.', 'error');
       } else {

@@ -3,7 +3,9 @@ import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
+import { logger } from 'firebase-functions';
+import { ensureThumbnail, errorCode } from './feedPhotos';
 
 initializeApp();
 
@@ -59,6 +61,9 @@ export const deleteStudentAccount = onCall<DeleteStudentRequest>(async (request)
     throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
   }
   const callerEmail = callerToken.token.email.toLowerCase();
+  if (callerToken.token.email_verified !== true) {
+    throw new HttpsError('permission-denied', '이메일 인증이 완료된 교수자 계정이 필요합니다.');
+  }
   const callerUid = callerToken.uid;
 
   const callerAllowlistDoc = await db.collection('instructorAllowlist').doc(callerEmail).get();
@@ -102,12 +107,10 @@ export const deleteStudentAccount = onCall<DeleteStudentRequest>(async (request)
   try {
     // --- 3. Find this student's submissions and derive their public feed
     //     post ids (feedId = sha256(subId), see FirebaseBackend.submitWeek),
-    //     then delete every Storage object tied to them. Deleting Storage
-    //     BEFORE Firestore means a mid-failure here never leaves a Firestore
-    //     record pointing at an already-deleted photo — the reverse
-    //     ordering risk (an orphaned photo with no Firestore record) is
-    //     harmless. ignoreNotFound makes every delete idempotent, so a retry
-    //     after a partial failure never errors on already-deleted files.
+    //     then delete every Storage object tied to them. Keep the profile
+    //     until Auth deletion succeeds, so an instructor can retry failures.
+    //     A partial Storage failure may temporarily leave a missing image;
+    //     ignoreNotFound lets the retry safely finish the remaining work.
     const bucket = storage.bucket();
     const deletedWeeks: number[] = [];
     const feedIds: string[] = [];
@@ -124,6 +127,13 @@ export const deleteStudentAccount = onCall<DeleteStudentRequest>(async (request)
       await bucket.file(`feedPhotos/${feedId}.jpg`).delete({ ignoreNotFound: true });
     }
 
+    // Delete Auth while the authoritative student profile still exists.
+    // If Auth fails, retry remains authorized from that profile. If Auth
+    // succeeded but Firestore later fails, user-not-found is a safe retry.
+    step = 'auth';
+    try { await auth.deleteUser(targetUid); }
+    catch (error) { if (errorCode(error) !== 'auth/user-not-found') throw error; }
+
     // --- 4. Delete every Firestore document tied to this uid, in one batch
     //     so it can never partially apply. ---
     step = 'firestore';
@@ -136,22 +146,13 @@ export const deleteStudentAccount = onCall<DeleteStudentRequest>(async (request)
     goalVersionsSnap.forEach((d) => batch.delete(d.ref));
     const profileHistorySnap = await db.collection('users').doc(targetUid).collection('profileHistory').get();
     profileHistorySnap.forEach((d) => batch.delete(d.ref));
-    if (studentId) {
-      batch.delete(db.collection('studentIdRegistry').doc(`${semesterId}_${studentId}`));
-    }
+    batch.delete(db.collection('users').doc(targetUid).collection('privacyConsent').doc('record'));
+    const registrySnap = await db.collection('studentIdRegistry').where('uid', '==', targetUid).get();
+    registrySnap.forEach(d => batch.delete(d.ref));
     batch.delete(db.collection('users').doc(targetUid));
-    await batch.commit();
-
-    // --- 5. Delete the Firebase Auth account itself, last — once this
-    //     succeeds the student can never sign in again, so every other
-    //     step above must already have succeeded first. ---
-    step = 'auth';
-    await auth.deleteUser(targetUid);
-
-    // --- 6. Audit log. Identifying fields only — never reflection/photo
-    //     content (see firestore.rules adminAuditLogs comment). ---
-    step = 'audit-log';
-    await db.collection('adminAuditLogs').add({
+    // Commit the audit atomically with deletion, avoiding a missing-profile
+    // retry after a separate audit-log write failure.
+    batch.set(db.collection('adminAuditLogs').doc(), {
       action: 'deleteStudent',
       targetUid,
       targetName: name,
@@ -160,6 +161,7 @@ export const deleteStudentAccount = onCall<DeleteStudentRequest>(async (request)
       deletedBy: callerEmail,
       deletedAt: FieldValue.serverTimestamp(),
     });
+    await batch.commit();
 
     return { uid: targetUid, name, studentId, deletedWeeks };
   } catch (err) {
@@ -180,7 +182,7 @@ interface PublishFeedPostResult {
 
 /**
  * Publishes the anonymous feed copy of a student's own already-committed
- * private submission, via a SERVER-SIDE Storage object copy — the student's
+ * private submission, via a SERVER-SIDE JPEG thumbnail — the student's
  * device never uploads the same photo bytes twice (see
  * FirebaseBackend.submitWeek(), which used to upload the same Blob a second
  * time to feedPhotos/{feedId}.jpg from the client; that second client upload
@@ -194,7 +196,7 @@ interface PublishFeedPostResult {
  * deleteStudentAccount's existing feedPhotos/{feedId}.jpg deletion, and for
  * every already-published feedPosts document.
  */
-export const publishFeedPost = onCall<PublishFeedPostRequest>(async (request): Promise<PublishFeedPostResult> => {
+export const publishFeedPost = onCall<PublishFeedPostRequest>({ memory: '1GiB', concurrency: 1, maxInstances: 5, timeoutSeconds: 60 }, async (request): Promise<PublishFeedPostResult> => {
   const db = getFirestore();
   const storage = getStorage();
 
@@ -231,7 +233,7 @@ export const publishFeedPost = onCall<PublishFeedPostRequest>(async (request): P
     throw new HttpsError('not-found', '해당 주차의 제출을 찾을 수 없습니다.');
   }
   const submission = subSnap.data() as Record<string, unknown>;
-  if (submission.userId !== uid) {
+  if (submission.userId !== uid || submission.semesterId !== semesterId || submission.week !== week || submission.status !== 'submitted') {
     throw new HttpsError('permission-denied', '본인의 제출만 게시할 수 있습니다.');
   }
   const expectedPhotoPath = `submissions/${uid}/${semesterId}/week${week}.jpg`;
@@ -251,24 +253,14 @@ export const publishFeedPost = onCall<PublishFeedPostRequest>(async (request): P
     return { feedId, photoURL: existing.photoURL || '' };
   }
 
-  let step = 'storage-copy';
+  let step = 'thumbnail';
   try {
-    // --- 5. Server-side Storage copy. The photo's bytes travel GCS-object-
-    //     to-GCS-object; they are never streamed back through this function
-    //     or the client. Content and contentType are preserved exactly. ---
+    // --- 5. Only the server decodes the original; private bytes stay intact. ---
     const bucket = storage.bucket();
     const srcFile = bucket.file(expectedPhotoPath);
     const destPath = `feedPhotos/${feedId}.jpg`;
     const destFile = bucket.file(destPath);
-    await srcFile.copy(destFile);
-
-    // A straight copy() would otherwise carry over the SOURCE object's own
-    // download token — reusing the private photo's token on the public feed
-    // copy would leak a way to guess at the private token scheme. Mint a
-    // fresh one for this destination object instead.
-    const token = randomUUID();
-    await destFile.setMetadata({ metadata: { firebaseStorageDownloadTokens: token } });
-    const photoURL = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(destPath)}?alt=media&token=${token}`;
+    const photoURL = await ensureThumbnail(srcFile, destFile);
 
     // --- 6. characterStage: count this student's total completed
     //     submissions this semester. Bounded to TOTAL_WEEKS (<=15) document
@@ -289,7 +281,7 @@ export const publishFeedPost = onCall<PublishFeedPostRequest>(async (request): P
     const reflection = typeof submission.reflection === 'string' ? submission.reflection : '';
     const punctualClaim = submission.clientPunctualClaim === true;
 
-    await db.collection('feedPosts').doc(feedId).set({
+    const post = {
       anonName,
       semesterId,
       week,
@@ -299,12 +291,20 @@ export const publishFeedPost = onCall<PublishFeedPostRequest>(async (request): P
       characterStage,
       punctualClaim,
       createdAt: FieldValue.serverTimestamp(),
-    });
+    };
+    try {
+      await db.collection('feedPosts').doc(feedId).create(post);
+    } catch (error) {
+      if (errorCode(error) !== '6' && errorCode(error) !== 'already-exists') throw error;
+      const winner = await db.collection('feedPosts').doc(feedId).get();
+      if (!winner.exists) throw new Error('feed/disappeared');
+      return { feedId, photoURL: String(winner.get('photoURL')) };
+    }
 
     return { feedId, photoURL };
   } catch (err) {
     if (err instanceof HttpsError) throw err;
-    const detail = err instanceof Error ? err.message : String(err);
-    throw new HttpsError('internal', `피드 게시 실패 (단계: ${step}): ${detail}`);
+    logger.error('feed/publish-failed', { feedId, step, code: errorCode(err), reason: err instanceof Error ? err.message : 'unknown' });
+    throw new HttpsError('internal', '피드 사진 처리에 실패했습니다. 인증 제출 원본은 보존됩니다.');
   }
 });

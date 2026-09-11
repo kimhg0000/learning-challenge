@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { doc, setDoc } from 'firebase/firestore';
 import { FirebaseBackend } from '../../src/backend/firebaseBackend';
-import { setupIntegrationRules, createStudent, withRulesDisabled } from './helpers';
+import { verifyEmulatorEmail, setupIntegrationRules, createStudent, withRulesDisabled } from './helpers';
 
 // The instructor real-name feed (feed.ts renderInstructorFeed) is built by
 // calling backend.adminListStudents()/adminListAllSubmissions() directly —
@@ -30,6 +30,7 @@ describe('instructor-only access to the roster/submissions the real-name feed de
     await withRulesDisabled(async (firestore) => {
       await setDoc(doc(firestore, 'instructorAllowlist', email.toLowerCase()), { note: 'test' });
     });
+    await verifyEmulatorEmail(backend, uid, email);
     await backend.ensureInstructorProfile(uid, email, '교수자');
 
     const students = await backend.adminListStudents();

@@ -4,7 +4,7 @@ import { FirebaseBackend } from '../../src/backend/firebaseBackend';
 import { buildExcelRows } from '../../src/admin/excelExport';
 import { TOTAL_WEEKS, SEMESTER_ID } from '../../src/constants';
 import { getScheduledWindow } from '../../src/utils/date';
-import { setupIntegrationRules, withRulesDisabled, createStudent } from './helpers';
+import { verifyEmulatorEmail, setupIntegrationRules, withRulesDisabled, createStudent } from './helpers';
 
 const STUDENT_COUNT = 100;
 // A realistic completion rate rather than everyone submitting every week —
@@ -87,6 +87,7 @@ describe('100 students x 15 weeks (up to 1,500 submissions)', () => {
         }
       });
     });
+    await verifyEmulatorEmail(instructorBackend, instructorUid, instructorEmail);
     await instructorBackend.ensureInstructorProfile(instructorUid, instructorEmail, '교수자');
 
     // Read + measure over WHATEVER is actually in the project (realistic —
